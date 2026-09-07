@@ -20,10 +20,10 @@
 
 - name: Define Kickstart paths
   ansible.builtin.set_fact:
-    ks_work_dir: "/tmp/{{ vm_name }}-kickstart"
-    ks_file: "/tmp/{{ vm_name }}-kickstart/rhel9.ks"
-    ks_iso: "/home/libvirt-images/iso/{{ vm_name }}-ks.iso"
-    disk_path: "/home/libvirt-images/{{ vm_name }}.qcow2"
+    ks_work_dir: "{{ libvirt_work_dir }}/{{ vm_name }}-kickstart"
+    ks_file: "{{ libvirt_work_dir }}/{{ vm_name }}-kickstart/rhel9.ks"
+    ks_iso: "{{ libvirt_work_dir }}/{{ vm_name }}-ks.iso"
+    disk_path: "{{ libvirt_vm_dir }}/{{ vm_name }}.qcow2"
 
 
 # ============================================================
@@ -276,12 +276,18 @@
   ansible.builtin.debug:
     msg: "VM {{ vm_name }} is ready. Hostname: {{ final_hostname.stdout }}"
 
+
 # ============================================================
 # CLEAN TEMPORARY FILES
 # ============================================================
 
 - name: Remove temporary Kickstart directory
-  become: true
   ansible.builtin.file:
     path: "{{ ks_work_dir }}"
+    state: absent
+
+
+- name: Remove temporary Kickstart ISO
+  ansible.builtin.file:
+    path: "{{ ks_iso }}"
     state: absent

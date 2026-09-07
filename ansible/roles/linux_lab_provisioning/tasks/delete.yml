@@ -1,5 +1,17 @@
 ---
 # ============================================================
+# DEFINE VM PATHS
+# ============================================================
+
+- name: Define VM storage paths
+  ansible.builtin.set_fact:
+    disk_path: "{{ libvirt_vm_dir }}/{{ vm_name }}.qcow2"
+    trash_disk_path: "{{ libvirt_trash_dir }}/{{ vm_name }}.qcow2"
+    ks_iso_path: "{{ libvirt_work_dir }}/{{ vm_name }}-ks.iso"
+    cloudinit_iso_path: "{{ libvirt_work_dir }}/{{ vm_name }}-cidata.iso"
+
+
+# ============================================================
 # CHECK VM
 # ============================================================
 
@@ -40,13 +52,37 @@
 
 
 # ============================================================
-# REMOVE VM DISK
+# PREPARE TRASH DIRECTORY
 # ============================================================
 
-- name: Remove VM qcow2 disk
+- name: Ensure trash directory exists
   ansible.builtin.file:
-    path: "/home/libvirt-images/{{ vm_name }}.qcow2"
+    path: "{{ libvirt_trash_dir }}"
+    state: directory
+    mode: "0755"
+
+
+# ============================================================
+# MOVE VM DISK TO TRASH
+# ============================================================
+
+- name: Check if VM disk exists
+  ansible.builtin.stat:
+    path: "{{ disk_path }}"
+  register: vm_disk
+
+
+- name: Remove previous disk from trash
+  ansible.builtin.file:
+    path: "{{ trash_disk_path }}"
     state: absent
+  when: vm_disk.stat.exists
+
+
+- name: Move VM qcow2 disk to trash
+  ansible.builtin.command:
+    cmd: "mv {{ disk_path }} {{ trash_disk_path }}"
+  when: vm_disk.stat.exists
 
 
 # ============================================================
@@ -55,7 +91,7 @@
 
 - name: Remove VM Kickstart ISO
   ansible.builtin.file:
-    path: "/home/libvirt-images/iso/{{ vm_name }}-ks.iso"
+    path: "{{ ks_iso_path }}"
     state: absent
 
 
@@ -67,7 +103,7 @@
 # Gold/cloud-init provisioning workflow.
 - name: Remove old cloud-init ISO
   ansible.builtin.file:
-    path: "/home/libvirt-images/{{ vm_name }}-cidata.iso"
+    path: "{{ cloudinit_iso_path }}"
     state: absent
 
 

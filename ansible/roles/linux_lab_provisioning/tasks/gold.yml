@@ -9,9 +9,9 @@
 
 - name: Define Gold paths
   ansible.builtin.set_fact:
-    base_image: "/var/lib/libvirt/images/template-rhel9.qcow2"
-    disk_path: "/home/libvirt-images/{{ vm_name }}.qcow2"
-    cloudinit_iso: "/home/libvirt-images/{{ vm_name }}-cidata.iso"
+    base_image: "{{ gold_image }}"
+    disk_path: "{{ libvirt_vm_dir }}/{{ vm_name }}.qcow2"
+    cloudinit_iso: "{{ libvirt_work_dir }}/{{ vm_name }}-cidata.iso"
 
     tmp_user_data: "/tmp/{{ vm_name }}-user-data"
     tmp_meta_data: "/tmp/{{ vm_name }}-meta-data"
@@ -56,13 +56,13 @@
 - name: Check Gold base image exists
   ansible.builtin.stat:
     path: "{{ base_image }}"
-  register: gold_image
+  register: gold_image_status
 
 
 - name: Fail if Gold image does not exist
   ansible.builtin.assert:
     that:
-      - gold_image.stat.exists
+      - gold_image_status.stat.exists
     fail_msg: "Gold image not found: {{ base_image }}"
     success_msg: "Gold image found: {{ base_image }}"
 
@@ -305,6 +305,16 @@
       sda
       --eject
   failed_when: false
+
+
+# ============================================================
+# CLEAN TEMPORARY CLOUD-INIT ISO
+# ============================================================
+
+- name: Remove cloud-init ISO
+  ansible.builtin.file:
+    path: "{{ cloudinit_iso }}"
+    state: absent
 
 
 # ============================================================

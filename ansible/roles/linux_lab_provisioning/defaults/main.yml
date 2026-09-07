@@ -20,10 +20,30 @@ dns_servers:
 
 
 # ============================================================
+# LIBVIRT STORAGE
+# ============================================================
+
+libvirt_image_dir: "/home/libvirt-images"
+
+libvirt_template_dir: "{{ libvirt_image_dir }}/templates"
+libvirt_iso_dir: "{{ libvirt_image_dir }}/iso"
+libvirt_vm_dir: "{{ libvirt_image_dir }}/vms"
+libvirt_work_dir: "{{ libvirt_image_dir }}/work"
+libvirt_trash_dir: "{{ libvirt_image_dir }}/trash"
+
+
+# ============================================================
 # RHEL / KICKSTART
 # ============================================================
 
-rhel_iso: "/home/libvirt-images/iso/rhel-9.8-x86_64-dvd.iso"
+rhel_iso: "{{ libvirt_iso_dir }}/rhel-9.8-x86_64-dvd.iso"
+
+
+# ============================================================
+# GOLD IMAGE
+# ============================================================
+
+gold_image: "{{ libvirt_template_dir }}/rhel9-gold.qcow2"
 
 
 # ============================================================
