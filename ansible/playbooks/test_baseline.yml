@@ -1,8 +1,0 @@
----
-- name: Test Linux baseline
-  hosts: lab
-  become: true
-  gather_facts: true
-
-  roles:
-    - /opt/vm-portal/ansible/roles/linux_baseline/
