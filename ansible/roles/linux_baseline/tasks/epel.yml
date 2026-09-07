@@ -1,0 +1,40 @@
+---
+# EPEL configuration
+
+- name: Get system architecture
+  ansible.builtin.command:
+    cmd: uname -m
+  register: system_architecture
+  changed_when: false
+
+- name: Check enabled repositories
+  ansible.builtin.command:
+    cmd: subscription-manager repos --list-enabled
+  register: enabled_repositories
+  changed_when: false
+
+- name: Enable CodeReady Builder repository
+  ansible.builtin.command:
+    cmd: "subscription-manager repos --enable codeready-builder-for-rhel-9-{{ system_architecture.stdout }}-rpms"
+  when: >
+    "codeready-builder-for-rhel-9-" ~ system_architecture.stdout ~ "-rpms"
+    not in enabled_repositories.stdout
+
+- name: Check if EPEL release package is installed
+  ansible.builtin.command:
+    cmd: rpm -q epel-release
+  register: epel_release
+  changed_when: false
+  failed_when: false
+
+- name: Import EPEL GPG key
+  ansible.builtin.rpm_key:
+    state: present
+    key: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9
+  when: epel_release.rc != 0
+
+- name: Install EPEL release package
+  ansible.builtin.dnf:
+    name: https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+    state: present
+  when: epel_release.rc != 0

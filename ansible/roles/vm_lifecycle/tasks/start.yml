@@ -1,0 +1,29 @@
+---
+# Start VM
+
+- name: Start VM if stopped
+  ansible.builtin.command:
+    cmd: "virsh start {{ vm_name }}"
+  when: vm_state.stdout | trim == "shut off"
+
+- name: Wait for VM to reach running state
+  ansible.builtin.command:
+    cmd: "virsh domstate {{ vm_name }}"
+  register: start_vm_state
+  changed_when: false
+  retries: 30
+  delay: 2
+  until: start_vm_state.stdout | trim == "running"
+  when: vm_state.stdout | trim == "shut off"
+
+- name: Show start result
+  ansible.builtin.debug:
+    msg: "VM {{ vm_name }} is running"
+  when:
+    - vm_state.stdout | trim == "shut off"
+
+- name: Show start no-op
+  ansible.builtin.debug:
+    msg: "VM {{ vm_name }} is already running"
+  when:
+    - vm_state.stdout | trim == "running"

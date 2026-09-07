@@ -1,0 +1,329 @@
+---
+# ============================================================
+# GOLD IMAGE PROVISIONING
+# ============================================================
+
+# ============================================================
+# VARIABLES
+# ============================================================
+
+- name: Define Gold paths
+  ansible.builtin.set_fact:
+    base_image: "/var/lib/libvirt/images/template-rhel9.qcow2"
+    disk_path: "/home/libvirt-images/{{ vm_name }}.qcow2"
+    cloudinit_iso: "/home/libvirt-images/{{ vm_name }}-cidata.iso"
+
+    tmp_user_data: "/tmp/{{ vm_name }}-user-data"
+    tmp_meta_data: "/tmp/{{ vm_name }}-meta-data"
+    tmp_network_config: "/tmp/{{ vm_name }}-network-config"
+
+
+# ============================================================
+# CLEAN PREVIOUS VM
+# ============================================================
+
+- name: Check if VM already exists
+  ansible.builtin.command:
+    cmd: "virsh dominfo {{ vm_name }}"
+  register: existing_vm
+  failed_when: false
+  changed_when: false
+
+
+- name: Remove previous VM
+  ansible.builtin.shell: |
+    virsh destroy {{ vm_name }} 2>/dev/null || true
+    virsh undefine {{ vm_name }} --nvram 2>/dev/null || true
+  when: existing_vm.rc == 0
+
+
+- name: Remove previous VM disk
+  ansible.builtin.file:
+    path: "{{ disk_path }}"
+    state: absent
+
+
+- name: Remove previous cloud-init ISO
+  ansible.builtin.file:
+    path: "{{ cloudinit_iso }}"
+    state: absent
+
+
+# ============================================================
+# VERIFY GOLD IMAGE
+# ============================================================
+
+- name: Check Gold base image exists
+  ansible.builtin.stat:
+    path: "{{ base_image }}"
+  register: gold_image
+
+
+- name: Fail if Gold image does not exist
+  ansible.builtin.assert:
+    that:
+      - gold_image.stat.exists
+    fail_msg: "Gold image not found: {{ base_image }}"
+    success_msg: "Gold image found: {{ base_image }}"
+
+
+# ============================================================
+# CREATE OVERLAY DISK
+# ============================================================
+
+- name: Create overlay qcow2 disk
+  ansible.builtin.command:
+    cmd: >
+      qemu-img create
+      -f qcow2
+      -F qcow2
+      -b {{ base_image }}
+      {{ disk_path }}
+
+
+# ============================================================
+# SELINUX
+# ============================================================
+
+- name: Set SELinux context on VM disk
+  ansible.builtin.command:
+    cmd: "chcon -t virt_image_t {{ disk_path }}"
+
+
+# ============================================================
+# SSH KEY
+# ============================================================
+
+- name: Load SSH public key
+  ansible.builtin.set_fact:
+    ssh_pub_key: "{{ lookup('file', '/home/unixadm/.ssh/id_rsa.pub') }}"
+
+
+# ============================================================
+# CLOUD-INIT USER DATA
+# ============================================================
+
+- name: Create cloud-init user-data
+  ansible.builtin.copy:
+    dest: "{{ tmp_user_data }}"
+    mode: "0644"
+    content: |
+      #cloud-config
+
+      hostname: {{ vm_name }}
+
+      manage_etc_hosts: true
+
+      users:
+        - name: unixadm
+          uid: 45001
+          shell: /bin/bash
+          groups: wheel
+
+      write_files:
+        - path: /home/unixadm/.ssh/authorized_keys
+          owner: unixadm:unixadm
+          permissions: "0600"
+          content: |
+            {{ ssh_pub_key }}
+
+      runcmd:
+        - mkdir -p /home/unixadm/.ssh
+        - chmod 700 /home/unixadm/.ssh
+        - chown -R unixadm:unixadm /home/unixadm/.ssh
+        - chmod 600 /home/unixadm/.ssh/authorized_keys
+        - chown unixadm:unixadm /home/unixadm/.ssh/authorized_keys
+
+
+# ============================================================
+# CLOUD-INIT META DATA
+# ============================================================
+
+- name: Create cloud-init meta-data
+  ansible.builtin.copy:
+    dest: "{{ tmp_meta_data }}"
+    mode: "0644"
+    content: |
+      instance-id: {{ vm_name }}
+      local-hostname: {{ vm_name }}
+
+
+# ============================================================
+# CLOUD-INIT NETWORK CONFIG
+# ============================================================
+
+- name: Create cloud-init network-config
+  ansible.builtin.copy:
+    dest: "{{ tmp_network_config }}"
+    mode: "0644"
+    content: |
+      version: 2
+
+      ethernets:
+        enp1s0:
+          dhcp4: false
+          addresses:
+            - {{ ip }}/24
+          gateway4: {{ gateway }}
+          nameservers:
+            addresses:
+      {% for dns in dns_servers %}
+              - {{ dns }}
+      {% endfor %}
+
+
+# ============================================================
+# CREATE CLOUD-INIT ISO
+# ============================================================
+
+- name: Create cloud-init ISO
+  ansible.builtin.command:
+    cmd: >
+      genisoimage
+      -output {{ cloudinit_iso }}
+      -volid cidata
+      -joliet
+      -rock
+      -graft-points
+      user-data={{ tmp_user_data }}
+      meta-data={{ tmp_meta_data }}
+      network-config={{ tmp_network_config }}
+
+
+# ============================================================
+# SELINUX CLOUD-INIT ISO
+# ============================================================
+
+- name: Set SELinux context on cloud-init ISO
+  ansible.builtin.command:
+    cmd: "chcon -t virt_content_t {{ cloudinit_iso }}"
+
+
+# ============================================================
+# VERIFY CLOUD-INIT ISO
+# ============================================================
+
+- name: Verify cloud-init ISO contents
+  ansible.builtin.command:
+    cmd: >
+      xorriso
+      -indev {{ cloudinit_iso }}
+      -ls
+  register: cloudinit_iso_content
+  changed_when: false
+
+
+- name: Show cloud-init ISO contents
+  ansible.builtin.debug:
+    var: cloudinit_iso_content.stdout_lines
+
+
+# ============================================================
+# CREATE VM
+# ============================================================
+
+- name: Create VM from Gold image
+  ansible.builtin.command:
+    cmd: >
+      virt-install
+      --name {{ vm_name }}
+      --memory {{ memory_mb }}
+      --vcpus {{ vcpus }}
+      --disk path={{ disk_path }},format=qcow2,bus=virtio
+      --disk path={{ cloudinit_iso }},device=cdrom
+      --network network=default
+      --graphics vnc
+      --osinfo rhel9.0
+      --import
+      --noautoconsole
+  register: virt_install_result
+
+
+# ============================================================
+# SHOW VIRT-INSTALL RESULT
+# ============================================================
+
+- name: Show virt-install result
+  ansible.builtin.debug:
+    var: virt_install_result.stdout_lines
+
+
+# ============================================================
+# WAIT FOR SSH
+# ============================================================
+
+- name: Wait for SSH after Gold deployment
+  ansible.builtin.wait_for:
+    host: "{{ ip }}"
+    port: 22
+    state: started
+    delay: 10
+    timeout: 300
+  delegate_to: localhost
+
+
+# ============================================================
+# VERIFY SSH ACCESS
+# ============================================================
+
+- name: Verify SSH access
+  ansible.builtin.command:
+    cmd: >
+      ssh
+      -i /home/unixadm/.ssh/id_rsa
+      -o IdentitiesOnly=yes
+      -o StrictHostKeyChecking=no
+      -o UserKnownHostsFile=/dev/null
+      -o ConnectTimeout=10
+      unixadm@{{ ip }}
+      'hostname'
+  register: gold_hostname
+  changed_when: false
+  retries: 10
+  delay: 5
+  until: gold_hostname.rc == 0
+
+
+# ============================================================
+# SHOW FINAL RESULT
+# ============================================================
+
+- name: Show Gold VM result
+  ansible.builtin.debug:
+    msg: "VM {{ vm_name }} is ready. Hostname: {{ gold_hostname.stdout }}"
+
+
+# ============================================================
+# EJECT CLOUD-INIT ISO
+# ============================================================
+
+- name: Eject cloud-init ISO
+  ansible.builtin.command:
+    cmd: >
+      virsh change-media
+      {{ vm_name }}
+      sda
+      --eject
+  failed_when: false
+
+
+# ============================================================
+# CLEAN TEMPORARY CLOUD-INIT FILES
+# ============================================================
+
+- name: Remove temporary cloud-init user-data
+  ansible.builtin.file:
+    path: "{{ tmp_user_data }}"
+    state: absent
+
+
+- name: Remove temporary cloud-init meta-data
+  ansible.builtin.file:
+    path: "{{ tmp_meta_data }}"
+    state: absent
+
+
+- name: Remove temporary cloud-init network-config
+  ansible.builtin.file:
+    path: "{{ tmp_network_config }}"
+    state: absent

@@ -1,0 +1,19 @@
+---
+# Security configuration
+
+- name: Disable SELinux
+  ansible.posix.selinux:
+    state: disabled
+  register: selinux_config
+
+- name: Stop and disable firewalld
+  ansible.builtin.systemd:
+    name: firewalld
+    state: stopped
+    enabled: false
+
+- name: Reboot after disabling SELinux
+  ansible.builtin.reboot:
+    msg: "Rebooting system after disabling SELinux"
+    reboot_timeout: 600
+  when: selinux_config.reboot_required | default(false)

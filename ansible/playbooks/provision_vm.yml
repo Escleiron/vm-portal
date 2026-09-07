@@ -1,0 +1,11 @@
+---
+- name: Linux Lab Provisioning
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  environment:
+    LIBVIRT_DEFAULT_URI: qemu:///system
+
+  roles:
+    - role: /opt/vm-portal/ansible/roles/linux_lab_provisioning

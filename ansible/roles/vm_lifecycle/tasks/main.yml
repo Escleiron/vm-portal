@@ -1,0 +1,50 @@
+---
+# tasks file for vm_lifecycle
+
+# ============================================================
+# CHECK VM
+# ============================================================
+
+- name: Check if VM exists
+  ansible.builtin.command:
+    cmd: "virsh dominfo {{ vm_name }}"
+  register: vm_info
+  changed_when: false
+  failed_when: false
+
+- name: Fail if VM does not exist
+  ansible.builtin.fail:
+    msg: "VM {{ vm_name }} does not exist in libvirt"
+  when: vm_info.rc != 0
+
+
+# ============================================================
+# GET VM STATE
+# ============================================================
+
+- name: Get VM state
+  ansible.builtin.command:
+    cmd: "virsh domstate {{ vm_name }}"
+  register: vm_state
+  changed_when: false
+
+- name: Show current VM state
+  ansible.builtin.debug:
+    msg: "VM {{ vm_name }} state: {{ vm_state.stdout | trim }}"
+
+
+# ============================================================
+# DISPATCH ACTION
+# ============================================================
+
+- name: Execute start action
+  ansible.builtin.include_tasks: start.yml
+  when: vm_action == "start"
+
+- name: Execute stop action
+  ansible.builtin.include_tasks: stop.yml
+  when: vm_action == "stop"
+
+- name: Execute restart action
+  ansible.builtin.include_tasks: restart.yml
+  when: vm_action == "restart"

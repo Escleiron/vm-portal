@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Logs - {{ vm.name }}
+    </title>
+
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        body {
+
+            margin: 0;
+            padding: 40px 20px;
+
+            background: #f5f6f8;
+            color: #1f2937;
+
+            font-family:
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                Arial,
+                sans-serif;
+
+        }
+
+
+        /* ========================================================= */
+        /* MAIN CONTAINER */
+        /* ========================================================= */
+
+        .container {
+
+            max-width: 1250px;
+            margin: 0 auto;
+
+        }
+
+
+        /* ========================================================= */
+        /* HEADER */
+        /* ========================================================= */
+
+        .header {
+
+            display: flex;
+
+            justify-content: space-between;
+            align-items: flex-end;
+
+            margin-bottom: 25px;
+
+        }
+
+
+        .header-title h1 {
+
+            margin: 0;
+
+            font-size: 28px;
+            font-weight: 650;
+
+        }
+
+
+        .header-title p {
+
+            margin-top: 7px;
+            margin-bottom: 0;
+
+            color: #667085;
+
+            font-size: 14px;
+
+        }
+
+
+        /* ========================================================= */
+        /* BACK BUTTON */
+        /* ========================================================= */
+
+        .back-button {
+
+            display: inline-block;
+
+            padding: 9px 16px;
+
+            background: #ffffff;
+
+            color: #344054;
+
+            border: 1px solid #d0d5dd;
+            border-radius: 7px;
+
+            font-size: 13px;
+            font-weight: 600;
+
+            text-decoration: none;
+
+        }
+
+
+        .back-button:hover {
+
+            background: #f2f4f7;
+
+        }
+
+
+        /* ========================================================= */
+        /* INFORMATION CARD */
+        /* ========================================================= */
+
+        .info-card {
+
+            display: grid;
+
+            grid-template-columns:
+                1.5fr
+                1fr
+                1fr
+                1.5fr;
+
+            gap: 20px;
+
+            padding: 20px 24px;
+
+            background: white;
+
+            border: 1px solid #d9dde3;
+            border-radius: 10px;
+
+            box-shadow:
+                0 2px 6px rgba(0, 0, 0, 0.04);
+
+            margin-bottom: 20px;
+
+        }
+
+
+        .info-item {
+
+            min-width: 0;
+
+        }
+
+
+        .info-label {
+
+            margin-bottom: 5px;
+
+            color: #667085;
+
+            font-size: 11px;
+            font-weight: 650;
+
+            text-transform: uppercase;
+
+            letter-spacing: 0.4px;
+
+        }
+
+
+        .info-value {
+
+            color: #1f2937;
+
+            font-size: 14px;
+            font-weight: 600;
+
+            overflow: hidden;
+
+            text-overflow: ellipsis;
+
+            white-space: nowrap;
+
+        }
+
+
+        /* ========================================================= */
+        /* STATUS */
+        /* ========================================================= */
+
+        .status {
+
+            display: inline-flex;
+
+            align-items: center;
+
+            padding: 4px 9px;
+
+            border-radius: 999px;
+
+            font-size: 11px;
+            font-weight: 700;
+
+            letter-spacing: 0.2px;
+
+        }
+
+
+        .status::before {
+
+            content: "";
+
+            width: 6px;
+            height: 6px;
+
+            margin-right: 6px;
+
+            border-radius: 50%;
+
+            background: currentColor;
+
+        }
+
+
+        .running {
+
+            color: #067647;
+            background: #ecfdf3;
+
+        }
+
+
+        .provisioning {
+
+            color: #b54708;
+            background: #fffaeb;
+
+        }
+
+
+        .deleting {
+
+            color: #b54708;
+            background: #fffaeb;
+
+        }
+
+
+        .error {
+
+            color: #b42318;
+            background: #fef3f2;
+
+        }
+
+
+        .stopped {
+
+            color: #667085;
+            background: #f2f4f7;
+
+        }
+
+
+        .requested {
+
+            color: #667085;
+            background: #f2f4f7;
+
+        }
+
+
+        /* ========================================================= */
+        /* HISTORY CARD */
+        /* ========================================================= */
+
+        .history-card {
+
+            background: white;
+
+            border: 1px solid #d9dde3;
+            border-radius: 10px;
+
+            box-shadow:
+                0 2px 6px rgba(0, 0, 0, 0.04);
+
+            margin-bottom: 20px;
+
+            overflow: hidden;
+
+        }
+
+
+        .history-header {
+
+            padding: 14px 18px;
+
+            background: #f9fafb;
+
+            border-bottom: 1px solid #d9dde3;
+
+        }
+
+
+        .history-title {
+
+            color: #344054;
+
+            font-size: 13px;
+            font-weight: 650;
+
+        }
+
+
+        /* ========================================================= */
+        /* HISTORY TABLE */
+        /* ========================================================= */
+
+        .history-table {
+
+            width: 100%;
+
+            border-collapse: collapse;
+
+        }
+
+
+        .history-table th,
+        .history-table td {
+
+            padding: 12px 18px;
+
+            text-align: left;
+
+            border-bottom: 1px solid #eee;
+
+        }
+
+
+        .history-table th {
+
+            background: #ffffff;
+
+            color: #667085;
+
+            font-size: 11px;
+
+            font-weight: 650;
+
+            text-transform: uppercase;
+
+            letter-spacing: 0.4px;
+
+        }
+
+
+        .history-table td {
+
+            color: #344054;
+
+            font-size: 13px;
+
+        }
+
+
+        .history-table tr:last-child td {
+
+            border-bottom: none;
+
+        }
+
+
+        .history-table tr.selected {
+
+            background: #f5f9ff;
+
+        }
+
+
+        .operation {
+
+            display: inline-flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            min-width: 85px;
+
+            padding: 4px 9px;
+
+            border-radius: 5px;
+
+            background: #f2f4f7;
+
+            color: #344054;
+
+            font-size: 11px;
+
+            font-weight: 700;
+
+        }
+
+
+        .operation-create {
+
+            background: #ecfdf3;
+            color: #067647;
+
+        }
+
+
+        .operation-start {
+
+            background: #ecfdf3;
+            color: #067647;
+
+        }
+
+
+        .operation-stop {
+
+            background: #fef3f2;
+            color: #b42318;
+
+        }
+
+
+        .operation-restart {
+
+            background: #eff8ff;
+            color: #175cd3;
+
+        }
+
+
+        .operation-delete {
+
+            background: #fef3f2;
+            color: #b42318;
+
+        }
+
+
+        .view-link {
+
+            color: #007bff;
+
+            text-decoration: none;
+
+            font-weight: 600;
+
+        }
+
+
+        .view-link:hover {
+
+            text-decoration: underline;
+
+        }
+
+
+        .file-name {
+
+            color: #667085;
+
+            font-family:
+                "SFMono-Regular",
+                Consolas,
+                "Liberation Mono",
+                monospace;
+
+            font-size: 11px;
+
+        }
+
+
+        .size {
+
+            color: #667085;
+
+            white-space: nowrap;
+
+        }
+
+
+        /* ========================================================= */
+        /* LOG CARD */
+        /* ========================================================= */
+
+        .log-card {
+
+            background: white;
+
+            border: 1px solid #d9dde3;
+            border-radius: 10px;
+
+            box-shadow:
+                0 2px 6px rgba(0, 0, 0, 0.04);
+
+            overflow: hidden;
+
+        }
+
+
+        /* ========================================================= */
+        /* LOG HEADER */
+        /* ========================================================= */
+
+        .log-header {
+
+            display: flex;
+
+            justify-content: space-between;
+            align-items: center;
+
+            gap: 20px;
+
+            padding: 14px 18px;
+
+            background: #f9fafb;
+
+            border-bottom: 1px solid #d9dde3;
+
+        }
+
+
+        .log-title {
+
+            color: #344054;
+
+            font-size: 13px;
+            font-weight: 650;
+
+        }
+
+
+        .log-file {
+
+            color: #667085;
+
+            font-size: 11px;
+
+            font-family:
+                "SFMono-Regular",
+                Consolas,
+                "Liberation Mono",
+                monospace;
+
+            overflow: hidden;
+
+            text-overflow: ellipsis;
+
+            white-space: nowrap;
+
+        }
+
+
+        /* ========================================================= */
+        /* LOG CONTENT */
+        /* ========================================================= */
+
+        .log-container {
+
+            background: #111827;
+
+            padding: 20px;
+
+            height: 700px;
+
+            overflow: auto;
+
+        }
+
+
+        pre {
+
+            margin: 0;
+
+            color: #d1d5db;
+
+            font-family:
+                "SFMono-Regular",
+                Consolas,
+                "Liberation Mono",
+                monospace;
+
+            font-size: 12px;
+
+            line-height: 1.55;
+
+            white-space: pre-wrap;
+
+            word-break: break-word;
+
+        }
+
+
+        /* ========================================================= */
+        /* EMPTY */
+        /* ========================================================= */
+
+        .empty {
+
+            padding: 25px;
+
+            color: #667085;
+
+            font-size: 14px;
+
+        }
+
+
+        /* ========================================================= */
+        /* FOOTER */
+        /* ========================================================= */
+
+        .footer {
+
+            margin-top: 15px;
+
+            color: #98a2b3;
+
+            font-size: 12px;
+
+            text-align: right;
+
+        }
+
+
+        /* ========================================================= */
+        /* RESPONSIVE */
+        /* ========================================================= */
+
+        @media (max-width: 850px) {
+
+            body {
+
+                padding: 20px 12px;
+
+            }
+
+
+            .header {
+
+                align-items: flex-start;
+
+                flex-direction: column;
+
+                gap: 15px;
+
+            }
+
+
+            .info-card {
+
+                grid-template-columns: 1fr 1fr;
+
+            }
+
+
+            .history-table th:nth-child(4),
+            .history-table td:nth-child(4) {
+
+                display: none;
+
+            }
+
+        }
+
+
+        @media (max-width: 550px) {
+
+            .info-card {
+
+                grid-template-columns: 1fr;
+
+            }
+
+
+            .history-table th:nth-child(3),
+            .history-table td:nth-child(3) {
+
+                display: none;
+
+            }
+
+
+            .log-header {
+
+                align-items: flex-start;
+
+                flex-direction: column;
+
+            }
+
+
+            .log-container {
+
+                height: 600px;
+
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<div class="container">
+
+
+    <!-- ========================================================= -->
+    <!-- HEADER -->
+    <!-- ========================================================= -->
+
+    <div class="header">
+
+
+        <div class="header-title">
+
+            <h1>
+                VM Logs
+            </h1>
+
+            <p>
+                Operation history for
+                <strong>{{ vm.name }}</strong>
+            </p>
+
+        </div>
+
+
+        <a
+            href="/vm/{{ vm.name }}"
+            class="back-button"
+        >
+            ← Back to VM
+        </a>
+
+
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- VM INFORMATION -->
+    <!-- ========================================================= -->
+
+    <div class="info-card">
+
+
+        <!-- VM -->
+
+        <div class="info-item">
+
+            <div class="info-label">
+                Virtual Machine
+            </div>
+
+            <div class="info-value">
+                {{ vm.name }}
+            </div>
+
+        </div>
+
+
+        <!-- IP -->
+
+        <div class="info-item">
+
+            <div class="info-label">
+                IP Address
+            </div>
+
+            <div class="info-value">
+                {{ vm.ip }}
+            </div>
+
+        </div>
+
+
+        <!-- INSTALLATION -->
+
+        <div class="info-item">
+
+            <div class="info-label">
+                Installation
+            </div>
+
+            <div class="info-value">
+                {{ vm.install_method | default("-") | upper }}
+            </div>
+
+        </div>
+
+
+        <!-- STATUS -->
+
+        <div class="info-item">
+
+            <div class="info-label">
+                Status
+            </div>
+
+            <div class="info-value">
+
+
+                {% if vm.status == "RUNNING" %}
+
+                    <span class="status running">
+                        RUNNING
+                    </span>
+
+
+                {% elif vm.status == "STOPPED" %}
+
+                    <span class="status stopped">
+                        STOPPED
+                    </span>
+
+
+                {% elif vm.status == "PROVISIONING" %}
+
+                    <span class="status provisioning">
+                        PROVISIONING
+                    </span>
+
+
+                {% elif vm.status == "DELETING" %}
+
+                    <span class="status deleting">
+                        DELETING
+                    </span>
+
+
+                {% elif vm.status == "ERROR" %}
+
+                    <span class="status error">
+                        ERROR
+                    </span>
+
+
+                {% else %}
+
+                    <span class="status requested">
+                        {{ vm.status }}
+                    </span>
+
+                {% endif %}
+
+
+            </div>
+
+        </div>
+
+
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- OPERATION HISTORY -->
+    <!-- ========================================================= -->
+
+    <div class="history-card">
+
+
+        <div class="history-header">
+
+            <div class="history-title">
+                Operation History
+            </div>
+
+        </div>
+
+
+        {% if log_files %}
+
+        <table class="history-table">
+
+            <thead>
+
+                <tr>
+
+                    <th>
+                        Operation
+                    </th>
+
+                    <th>
+                        Date
+                    </th>
+
+                    <th>
+                        Size
+                    </th>
+
+                    <th>
+                        Log File
+                    </th>
+
+                    <th>
+                        Action
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+
+                {% for log in log_files %}
+
+                <tr
+                    {% if selected_log
+                       and selected_log.filename == log.filename %}
+                        class="selected"
+                    {% endif %}
+                >
+
+
+                    <td>
+
+                        {% if log.operation == "CREATE" %}
+
+                            <span class="operation operation-create">
+                                CREATE
+                            </span>
+
+                        {% elif log.operation == "START" %}
+
+                            <span class="operation operation-start">
+                                START
+                            </span>
+
+                        {% elif log.operation == "STOP" %}
+
+                            <span class="operation operation-stop">
+                                STOP
+                            </span>
+
+                        {% elif log.operation == "RESTART" %}
+
+                            <span class="operation operation-restart">
+                                RESTART
+                            </span>
+
+                        {% elif log.operation == "DELETE" %}
+
+                            <span class="operation operation-delete">
+                                DELETE
+                            </span>
+
+                        {% else %}
+
+                            <span class="operation">
+                                {{ log.operation }}
+                            </span>
+
+                        {% endif %}
+
+                    </td>
+
+
+                    <td>
+                        {{ log.datetime_display }}
+                    </td>
+
+
+                    <td class="size">
+
+                        {{ "%.1f"|format(log.size / 1024) }}
+                        KB
+
+                    </td>
+
+
+                    <td class="file-name">
+
+                        {{ log.filename }}
+
+                    </td>
+
+
+                    <td>
+
+                        <a
+                            href="/logs/{{ vm.name }}?log={{ log.filename | urlencode }}"
+                            class="view-link"
+                        >
+                            View
+                        </a>
+
+                    </td>
+
+
+                </tr>
+
+                {% endfor %}
+
+
+            </tbody>
+
+        </table>
+
+
+        {% else %}
+
+            <div class="empty">
+                No logs found for this VM.
+            </div>
+
+        {% endif %}
+
+
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- SELECTED LOG -->
+    <!-- ========================================================= -->
+
+    {% if selected_log %}
+
+    <div class="log-card">
+
+
+        <div class="log-header">
+
+
+            <div class="log-title">
+
+                {{ selected_log.operation }}
+                ·
+                {{ selected_log.datetime_display }}
+
+            </div>
+
+
+            <div class="log-file">
+
+                {{ selected_log.filename }}
+
+            </div>
+
+
+        </div>
+
+
+        <div class="log-container">
+
+            <pre>{{ log_content }}</pre>
+
+        </div>
+
+
+    </div>
+
+    {% endif %}
+
+
+    <!-- ========================================================= -->
+    <!-- FOOTER -->
+    <!-- ========================================================= -->
+
+    <div class="footer">
+
+        Linux Lab Provisioner · RHEL 9
+
+    </div>
+
+
+</div>
+
+
+</body>
+
+</html>

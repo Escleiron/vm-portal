@@ -1,0 +1,91 @@
+---
+# ============================================================
+# CHECK VM
+# ============================================================
+
+- name: Check if VM exists
+  ansible.builtin.command:
+    cmd: "virsh dominfo {{ vm_name }}"
+  register: vm_info
+  changed_when: false
+  failed_when: false
+
+
+- name: Show VM status
+  ansible.builtin.debug:
+    msg: "VM {{ vm_name }} exists in libvirt"
+  when: vm_info.rc == 0
+
+
+# ============================================================
+# STOP VM
+# ============================================================
+
+- name: Destroy VM if running
+  ansible.builtin.command:
+    cmd: "virsh destroy {{ vm_name }}"
+  when:
+    - vm_info.rc == 0
+    - "'running' in vm_info.stdout"
+
+
+# ============================================================
+# REMOVE VM DEFINITION
+# ============================================================
+
+- name: Undefine VM and remove UEFI NVRAM
+  ansible.builtin.command:
+    cmd: "virsh undefine {{ vm_name }} --nvram"
+  when: vm_info.rc == 0
+
+
+# ============================================================
+# REMOVE VM DISK
+# ============================================================
+
+- name: Remove VM qcow2 disk
+  ansible.builtin.file:
+    path: "/home/libvirt-images/{{ vm_name }}.qcow2"
+    state: absent
+
+
+# ============================================================
+# REMOVE KICKSTART ISO
+# ============================================================
+
+- name: Remove VM Kickstart ISO
+  ansible.builtin.file:
+    path: "/home/libvirt-images/iso/{{ vm_name }}-ks.iso"
+    state: absent
+
+
+# ============================================================
+# REMOVE OLD CLOUD-INIT ISO
+# ============================================================
+
+# Kept for compatibility with VMs created by the previous
+# Gold/cloud-init provisioning workflow.
+- name: Remove old cloud-init ISO
+  ansible.builtin.file:
+    path: "/home/libvirt-images/{{ vm_name }}-cidata.iso"
+    state: absent
+
+
+# ============================================================
+# VERIFY DELETION
+# ============================================================
+
+- name: Verify VM no longer exists
+  ansible.builtin.command:
+    cmd: "virsh dominfo {{ vm_name }}"
+  register: vm_verify
+  changed_when: false
+  failed_when: false
+
+
+- name: Confirm VM deletion
+  ansible.builtin.assert:
+    that:
+      - vm_verify.rc != 0
+    fail_msg: "VM {{ vm_name }} still exists in libvirt"
+    success_msg: "VM {{ vm_name }} successfully deleted"

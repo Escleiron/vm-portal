@@ -1,0 +1,70 @@
+---
+# Restart VM
+
+# ============================================================
+# RESTART RUNNING VM
+# ============================================================
+
+- name: Shutdown VM for restart
+  ansible.builtin.command:
+    cmd: "virsh shutdown {{ vm_name }}"
+  when: vm_state.stdout | trim == "running"
+
+- name: Wait for VM to reach shut off state
+  ansible.builtin.command:
+    cmd: "virsh domstate {{ vm_name }}"
+  register: restart_stop_state
+  changed_when: false
+  retries: 30
+  delay: 2
+  until: restart_stop_state.stdout | trim == "shut off"
+  when: vm_state.stdout | trim == "running"
+
+- name: Start VM after shutdown
+  ansible.builtin.command:
+    cmd: "virsh start {{ vm_name }}"
+  when:
+    - vm_state.stdout | trim == "running"
+    - restart_stop_state.stdout | trim == "shut off"
+
+- name: Wait for VM to reach running state
+  ansible.builtin.command:
+    cmd: "virsh domstate {{ vm_name }}"
+  register: restart_start_state
+  changed_when: false
+  retries: 30
+  delay: 2
+  until: restart_start_state.stdout | trim == "running"
+  when:
+    - vm_state.stdout | trim == "running"
+    - restart_stop_state.stdout | trim == "shut off"
+
+- name: Show restart result
+  ansible.builtin.debug:
+    msg: "VM {{ vm_name }} has been successfully restarted"
+  when: vm_state.stdout | trim == "running"
+
+
+# ============================================================
+# RESTART STOPPED VM
+# ============================================================
+
+- name: Start VM if stopped for restart
+  ansible.builtin.command:
+    cmd: "virsh start {{ vm_name }}"
+  when: vm_state.stdout | trim == "shut off"
+
+- name: Wait for VM to reach running state after restart
+  ansible.builtin.command:
+    cmd: "virsh domstate {{ vm_name }}"
+  register: restart_start_state_stopped
+  changed_when: false
+  retries: 30
+  delay: 2
+  until: restart_start_state_stopped.stdout | trim == "running"
+  when: vm_state.stdout | trim == "shut off"
+
+- name: Show restart start result
+  ansible.builtin.debug:
+    msg: "VM {{ vm_name }} was stopped and has been started"
+  when: vm_state.stdout | trim == "shut off"

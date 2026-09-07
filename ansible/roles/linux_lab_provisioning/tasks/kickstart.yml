@@ -1,0 +1,287 @@
+---
+# Kickstart provisioning tasks
+#
+# Expected variables:
+#   vm_name
+#   ip
+#   vcpus
+#   memory_mb
+#   disk_gb
+#
+# Defaults:
+#   gateway
+#   dns_servers
+#   ssh_pub_key
+#   rhel_iso
+
+# ============================================================
+# VARIABLES
+# ============================================================
+
+- name: Define Kickstart paths
+  ansible.builtin.set_fact:
+    ks_work_dir: "/tmp/{{ vm_name }}-kickstart"
+    ks_file: "/tmp/{{ vm_name }}-kickstart/rhel9.ks"
+    ks_iso: "/home/libvirt-images/iso/{{ vm_name }}-ks.iso"
+    disk_path: "/home/libvirt-images/{{ vm_name }}.qcow2"
+
+
+# ============================================================
+# CLEAN PREVIOUS VM
+# ============================================================
+
+- name: Check if VM already exists
+  ansible.builtin.command:
+    cmd: "virsh -c qemu:///system dominfo {{ vm_name }}"
+  register: existing_vm
+  failed_when: false
+  changed_when: false
+
+
+- name: Remove previous VM
+  ansible.builtin.shell: |
+    virsh -c qemu:///system destroy {{ vm_name }} 2>/dev/null || true
+    virsh -c qemu:///system undefine {{ vm_name }} --nvram 2>/dev/null || true
+  when: existing_vm.rc == 0
+
+
+- name: Remove previous VM disk
+  ansible.builtin.file:
+    path: "{{ disk_path }}"
+    state: absent
+
+
+- name: Remove previous Kickstart ISO
+  ansible.builtin.file:
+    path: "{{ ks_iso }}"
+    state: absent
+
+
+# ============================================================
+# KICKSTART WORK DIRECTORY
+# ============================================================
+
+- name: Create Kickstart working directory
+  ansible.builtin.file:
+    path: "{{ ks_work_dir }}"
+    state: directory
+    mode: "0755"
+
+
+# ============================================================
+# GENERATE KICKSTART
+# ============================================================
+
+- name: Generate VM specific Kickstart
+  ansible.builtin.template:
+    src: rhel9.ks.j2
+    dest: "{{ ks_file }}"
+    mode: "0644"
+
+
+- name: Validate generated Kickstart
+  ansible.builtin.command:
+    cmd: "ksvalidator {{ ks_file }}"
+  register: ks_validation
+  changed_when: false
+
+
+- name: Show Kickstart validation result
+  ansible.builtin.debug:
+    msg: "Kickstart validation successful for {{ vm_name }}"
+
+
+# ============================================================
+# CREATE KICKSTART ISO
+# ============================================================
+
+- name: Create VM specific Kickstart ISO
+  ansible.builtin.command:
+    cmd: >
+      genisoimage
+      -output {{ ks_iso }}
+      -volid KS
+      -joliet
+      -rock
+      {{ ks_file }}
+
+
+- name: Set SELinux context on Kickstart ISO
+  ansible.builtin.command:
+    cmd: "chcon -t virt_content_t {{ ks_iso }}"
+
+
+# ============================================================
+# CREATE VM DISK
+# ============================================================
+
+- name: Create VM qcow2 disk
+  ansible.builtin.command:
+    cmd: >
+      qemu-img create
+      -f qcow2
+      {{ disk_path }}
+      {{ disk_gb }}G
+
+
+- name: Set SELinux context on VM disk
+  ansible.builtin.command:
+    cmd: "chcon -t virt_image_t {{ disk_path }}"
+
+
+# ============================================================
+# START KICKSTART INSTALLATION
+# ============================================================
+
+- name: Start Kickstart installation
+  ansible.builtin.command:
+    cmd: >
+      virt-install
+      --name {{ vm_name }}
+      --memory {{ memory_mb }}
+      --vcpus {{ vcpus }}
+      --disk path={{ disk_path }},format=qcow2,bus=virtio
+      --disk path={{ ks_iso }},device=cdrom
+      --network network=default
+      --graphics vnc
+      --osinfo rhel9.0
+      --boot uefi
+      --location {{ rhel_iso }}
+      --extra-args="inst.ks=cdrom:/rhel9.ks inst.text"
+      --noautoconsole
+  register: virt_install_result
+
+
+- name: Show virt-install result
+  ansible.builtin.debug:
+    var: virt_install_result.stdout_lines
+
+
+# ============================================================
+# WAIT FOR KICKSTART INSTALLATION
+# ============================================================
+#
+# The VM is expected to remain "running" while Anaconda
+# performs the installation.
+#
+# We deliberately DO NOT check SSH here.
+#
+# Once Kickstart finishes, the "reboot --eject" directive
+# causes the VM to stop in our current libvirt setup.
+#
+# First give Anaconda 5 minutes before checking the state.
+# Then check every 10 seconds for a maximum total provisioning
+# time of 30 minutes.
+# ============================================================
+
+- name: Give Kickstart time to perform installation
+  ansible.builtin.pause:
+    minutes: 5
+
+
+- name: Wait for Kickstart installation to finish
+  ansible.builtin.command:
+    cmd: "virsh -c qemu:///system domstate {{ vm_name }}"
+  register: vm_state
+  changed_when: false
+  retries: 150
+  delay: 10
+  until: "'shut off' in vm_state.stdout"
+
+
+- name: Show Kickstart installation state
+  ansible.builtin.debug:
+    msg: "Kickstart installation finished. VM {{ vm_name }} is powered off."
+
+
+# ============================================================
+# START INSTALLED SYSTEM
+# ============================================================
+
+- name: Start VM after Kickstart installation
+  ansible.builtin.command:
+    cmd: "virsh -c qemu:///system start {{ vm_name }}"
+
+
+# ============================================================
+# WAIT FOR FIRST BOOT / SSH
+# ============================================================
+
+- name: Wait before checking SSH
+  ansible.builtin.pause:
+    seconds: 30
+
+
+- name: Wait for SSH after first boot
+  ansible.builtin.wait_for:
+    host: "{{ ip }}"
+    port: 22
+    state: started
+    timeout: 300
+  delegate_to: localhost
+
+
+# ============================================================
+# VERIFY KICKSTART COMPLETION
+# ============================================================
+
+- name: Verify Kickstart completion marker
+  ansible.builtin.command:
+    cmd: >
+      ssh
+      -i /home/unixadm/.ssh/id_rsa
+      -o IdentitiesOnly=yes
+      -o StrictHostKeyChecking=no
+      -o UserKnownHostsFile=/dev/null
+      -o ConnectTimeout=10
+      unixadm@{{ ip }}
+      'cat /etc/kickstart-complete'
+  register: kickstart_marker
+  changed_when: false
+  retries: 30
+  delay: 10
+  until:
+    - kickstart_marker.rc == 0
+    - "'Kickstart installation completed' in kickstart_marker.stdout"
+
+
+- name: Show Kickstart completion
+  ansible.builtin.debug:
+    msg: "Kickstart installation completed successfully on {{ vm_name }}"
+
+
+# ============================================================
+# VERIFY HOSTNAME
+# ============================================================
+
+- name: Verify installed hostname
+  ansible.builtin.command:
+    cmd: >
+      ssh
+      -i /home/unixadm/.ssh/id_rsa
+      -o IdentitiesOnly=yes
+      -o StrictHostKeyChecking=no
+      -o UserKnownHostsFile=/dev/null
+      -o ConnectTimeout=10
+      unixadm@{{ ip }}
+      'hostname'
+  register: final_hostname
+  changed_when: false
+  retries: 10
+  delay: 5
+  until: final_hostname.rc == 0
+
+
+- name: Show final VM hostname
+  ansible.builtin.debug:
+    msg: "VM {{ vm_name }} is ready. Hostname: {{ final_hostname.stdout }}"
+
+# ============================================================
+# CLEAN TEMPORARY FILES
+# ============================================================
+
+- name: Remove temporary Kickstart directory
+  become: true
+  ansible.builtin.file:
+    path: "{{ ks_work_dir }}"
+    state: absent

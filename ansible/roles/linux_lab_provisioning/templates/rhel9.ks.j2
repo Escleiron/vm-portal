@@ -1,0 +1,119 @@
+#version=RHEL9
+
+text
+cdrom
+
+lang en_US.UTF-8
+keyboard us
+timezone Europe/Madrid --utc
+
+# --------------------------------------------------
+# Network
+# --------------------------------------------------
+
+network --bootproto=static --device=link --ip={{ ip }} --netmask=255.255.255.0 --gateway={{ gateway }} --nameserver={{ dns_servers | join(',') }} --hostname={{ vm_name }}
+
+# --------------------------------------------------
+# Root
+# --------------------------------------------------
+
+rootpw --lock
+
+# --------------------------------------------------
+# User
+# --------------------------------------------------
+
+user --name=unixadm --uid=45001 --groups=wheel --shell=/bin/bash
+
+# --------------------------------------------------
+# Disk
+# --------------------------------------------------
+
+zerombr
+clearpart --all --initlabel
+
+part /boot/efi --fstype="efi" --size=256
+part /boot --fstype="xfs" --size=1024
+part pv.01 --size=1 --grow
+
+volgroup vg00 pv.01
+
+logvol /     --vgname=vg00 --name=lv_root --fstype="xfs" --size=15360
+logvol swap  --vgname=vg00 --name=lv_swap --fstype="swap" --size=8192
+logvol /var  --vgname=vg00 --name=lv_var  --fstype="xfs" --size=25600
+logvol /tmp  --vgname=vg00 --name=lv_tmp  --fstype="xfs" --size=10240
+logvol /opt  --vgname=vg00 --name=lv_opt  --fstype="xfs" --size=15360
+logvol /home --vgname=vg00 --name=lv_home --fstype="xfs" --size=5120
+
+# --------------------------------------------------
+# Bootloader
+# --------------------------------------------------
+
+bootloader --location=none
+
+# --------------------------------------------------
+# Software
+# --------------------------------------------------
+
+%packages
+@^minimal-environment
+openssh-server
+sudo
+vim-enhanced
+curl
+wget
+chrony
+bash-completion
+%end
+
+# --------------------------------------------------
+# Services
+# --------------------------------------------------
+
+services --enabled="sshd,chronyd"
+
+# --------------------------------------------------
+# Firewall
+# --------------------------------------------------
+
+firewall --enabled --service=ssh
+
+# --------------------------------------------------
+# SELinux
+# --------------------------------------------------
+
+selinux --enforcing
+
+# --------------------------------------------------
+# Post installation
+# --------------------------------------------------
+
+%post --log=/root/ks-post.log
+
+# SSH public key
+mkdir -p /home/unixadm/.ssh
+
+cat > /home/unixadm/.ssh/authorized_keys <<'EOF'
+{{ ssh_pub_key }}
+EOF
+
+chown -R unixadm:unixadm /home/unixadm/.ssh
+chmod 700 /home/unixadm/.ssh
+chmod 600 /home/unixadm/.ssh/authorized_keys
+
+restorecon -Rv /home/unixadm/.ssh
+
+# Passwordless sudo for unixadm
+cat > /etc/sudoers.d/unixadm <<'EOF'
+unixadm ALL=(ALL) NOPASSWD: ALL
+EOF
+
+chmod 440 /etc/sudoers.d/unixadm
+visudo -cf /etc/sudoers.d/unixadm
+
+# Installation marker
+echo "Kickstart installation completed" > /etc/kickstart-complete
+
+%end
+
+reboot --eject

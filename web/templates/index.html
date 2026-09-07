@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>Linux Lab Provisioner</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 40px 20px;
+
+            background: #f5f6f8;
+            color: #1f2937;
+
+            font-family:
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                Arial,
+                sans-serif;
+        }
+
+        .container {
+            max-width: 1250px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+
+            margin-bottom: 25px;
+        }
+
+        .header-title h1 {
+            margin: 0;
+
+            font-size: 28px;
+            font-weight: 650;
+        }
+
+        .header-title p {
+            margin-top: 7px;
+            margin-bottom: 0;
+
+            color: #667085;
+            font-size: 14px;
+        }
+
+        .create-button {
+            display: inline-block;
+
+            padding: 10px 18px;
+
+            background: #b42318;
+            color: white;
+
+            border: 1px solid #b42318;
+            border-radius: 7px;
+
+            font-size: 14px;
+            font-weight: 600;
+
+            text-decoration: none;
+        }
+
+        .create-button:hover {
+            background: #912018;
+        }
+
+        .card {
+            background: white;
+
+            border: 1px solid #d9dde3;
+            border-radius: 10px;
+
+            box-shadow:
+                0 2px 6px rgba(0, 0, 0, 0.04);
+
+            overflow: visible;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            padding: 13px 14px;
+
+            background: #f9fafb;
+
+            border-bottom: 1px solid #d9dde3;
+
+            color: #344054;
+
+            font-size: 12px;
+            font-weight: 650;
+
+            text-align: left;
+
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 14px;
+
+            border-bottom: 1px solid #eaecf0;
+
+            color: #344054;
+
+            font-size: 14px;
+
+            text-align: left;
+
+            white-space: nowrap;
+        }
+
+        .vm-row {
+            position: relative;
+        }
+
+        .vm-row:hover {
+            background: #fafafa;
+        }
+
+        .vm-name {
+            color: #1f2937;
+
+            font-weight: 650;
+
+            text-decoration: none;
+        }
+
+        .vm-name:hover {
+            color: #b42318;
+            text-decoration: underline;
+        }
+
+        .installation {
+            font-size: 12px;
+            font-weight: 650;
+        }
+
+
+        /* ========================================================= */
+        /* STATUS */
+        /* ========================================================= */
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+
+            padding: 4px 9px;
+
+            border-radius: 999px;
+
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .status::before {
+            content: "";
+
+            width: 6px;
+            height: 6px;
+
+            margin-right: 6px;
+
+            border-radius: 50%;
+
+            background: currentColor;
+        }
+
+        .running {
+            color: #067647;
+            background: #ecfdf3;
+        }
+
+        .stopped {
+            color: #667085;
+            background: #f2f4f7;
+        }
+
+        .provisioning,
+        .starting,
+        .stopping,
+        .restarting,
+        .deleting {
+            color: #b54708;
+            background: #fffaeb;
+        }
+
+        .error {
+            color: #b42318;
+            background: #fef3f2;
+        }
+
+
+        /* ========================================================= */
+        /* ACTIONS */
+        /* ========================================================= */
+
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .actions a {
+            color: #344054;
+
+            font-size: 13px;
+            font-weight: 600;
+
+            text-decoration: none;
+        }
+
+        .actions a:hover {
+            color: #b42318;
+            text-decoration: underline;
+        }
+
+        .delete {
+            color: #b42318 !important;
+        }
+
+
+        /* ========================================================= */
+        /* RUN JOB */
+        /* ========================================================= */
+
+        .job-menu {
+            position: relative;
+        }
+
+        .job-button {
+            padding: 6px 11px;
+
+            background: white;
+            color: #344054;
+
+            border: 1px solid #d0d5dd;
+            border-radius: 6px;
+
+            font-size: 12px;
+            font-weight: 600;
+
+            cursor: pointer;
+        }
+
+        .job-button:hover {
+            background: #f9fafb;
+            border-color: #98a2b3;
+        }
+
+        .job-dropdown {
+            display: none;
+
+            position: absolute;
+
+            right: 0;
+            top: calc(100% + 6px);
+
+            width: 285px;
+
+            padding: 8px;
+
+            background: white;
+
+            border: 1px solid #d9dde3;
+            border-radius: 8px;
+
+            box-shadow:
+                0 8px 20px rgba(0, 0, 0, 0.12);
+
+            z-index: 5000;
+        }
+
+        .job-dropdown.open {
+            display: block;
+        }
+
+
+        /* ========================================================= */
+        /* LIFECYCLE BUTTONS */
+        /* ========================================================= */
+
+        .lifecycle-actions {
+            display: grid;
+
+            grid-template-columns:
+                repeat(3, 1fr);
+
+            gap: 6px;
+
+            margin-bottom: 8px;
+        }
+
+        .lifecycle-button {
+            display: flex;
+
+            align-items: center;
+            justify-content: center;
+
+            gap: 6px;
+
+            padding: 8px 6px;
+
+            background: white;
+
+            border: 1px solid #e4e7ec;
+            border-radius: 6px;
+
+            font-size: 12px;
+            font-weight: 600;
+
+            cursor: pointer;
+        }
+
+        .lifecycle-button:hover:not(:disabled) {
+            background: #f9fafb;
+            border-color: #98a2b3;
+        }
+
+        .lifecycle-button:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        .action-symbol {
+            display: inline-flex;
+
+            align-items: center;
+            justify-content: center;
+
+            width: 18px;
+            height: 18px;
+
+            border-radius: 4px;
+
+            font-size: 10px;
+            font-weight: 800;
+        }
+
+        .start-symbol {
+            color: #067647;
+            background: #dcfae6;
+        }
+
+        .stop-symbol {
+            color: #b42318;
+            background: #fee4e2;
+        }
+
+        .restart-symbol {
+            color: #175cd3;
+            background: #dbeafe;
+        }
+
+
+        /* ========================================================= */
+        /* JOB ITEMS */
+        /* ========================================================= */
+
+        .job-separator {
+            height: 1px;
+
+            margin: 7px 2px;
+
+            background: #eaecf0;
+        }
+
+        .job-item {
+            display: flex;
+
+            align-items: center;
+
+            width: 100%;
+
+            padding: 9px 10px;
+
+            background: white;
+
+            border: none;
+            border-radius: 5px;
+
+            color: #344054;
+
+            font-size: 13px;
+
+            text-align: left;
+
+            cursor: pointer;
+        }
+
+        .job-item:hover:not(:disabled) {
+            background: #f2f4f7;
+        }
+
+        .job-item:disabled {
+            color: #98a2b3;
+            cursor: not-allowed;
+        }
+
+        .job-icon {
+            width: 25px;
+
+            font-size: 14px;
+        }
+
+
+        /* ========================================================= */
+        /* DETAILS */
+        /* ========================================================= */
+
+        .details-button {
+            padding: 6px 10px;
+
+            background: white;
+            color: #344054;
+
+            border: 1px solid #d0d5dd;
+            border-radius: 6px;
+
+            font-size: 12px;
+            font-weight: 600;
+
+            cursor: pointer;
+        }
+
+        .details-button:hover {
+            background: #f9fafb;
+            border-color: #98a2b3;
+        }
+
+        .details-row {
+            display: none;
+
+            background: #fafbfc;
+        }
+
+        .details-row.visible {
+            display: table-row;
+        }
+
+        .details-container {
+            padding: 20px 24px 22px;
+
+            border-bottom: 1px solid #d9dde3;
+        }
+
+        .details-grid {
+            display: grid;
+
+            grid-template-columns:
+                repeat(3, minmax(0, 1fr));
+
+            gap: 20px;
+        }
+
+        .details-section {
+            padding: 16px;
+
+            background: white;
+
+            border: 1px solid #e4e7ec;
+            border-radius: 8px;
+        }
+
+        .details-section h3 {
+            display: flex;
+
+            align-items: center;
+
+            gap: 8px;
+
+            margin: 0 0 14px;
+
+            color: #344054;
+
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .section-icon {
+            display: inline-flex;
+
+            align-items: center;
+            justify-content: center;
+
+            width: 23px;
+            height: 23px;
+
+            border-radius: 5px;
+
+            font-size: 12px;
+        }
+
+        .status-icon {
+            color: #067647;
+            background: #dcfae6;
+        }
+
+        .system-icon {
+            color: #175cd3;
+            background: #dbeafe;
+        }
+
+        .resource-icon {
+            color: #6941c6;
+            background: #ebe9fe;
+        }
+
+        .detail-line {
+            display: flex;
+
+            justify-content: space-between;
+
+            gap: 20px;
+
+            padding: 7px 0;
+
+            border-bottom: 1px solid #f2f4f7;
+
+            font-size: 12px;
+        }
+
+        .detail-line:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            color: #667085;
+        }
+
+        .detail-value {
+            color: #1f2937;
+
+            font-weight: 600;
+
+            text-align: right;
+
+            overflow-wrap: anywhere;
+        }
+
+        .empty {
+            padding: 50px 20px;
+
+            color: #667085;
+
+            text-align: center;
+
+            font-size: 14px;
+        }
+
+        .footer {
+            margin-top: 15px;
+
+            color: #98a2b3;
+
+            font-size: 12px;
+
+            text-align: right;
+        }
+
+
+        /* ========================================================= */
+        /* RESPONSIVE */
+        /* ========================================================= */
+
+        @media (max-width: 900px) {
+
+            body {
+                padding: 20px 12px;
+            }
+
+            .header {
+                align-items: flex-start;
+
+                flex-direction: column;
+
+                gap: 15px;
+            }
+
+            .card {
+                overflow-x: auto;
+            }
+
+            table {
+                min-width: 950px;
+            }
+
+            .details-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<div class="container">
+
+
+    <!-- ========================================================= -->
+    <!-- HEADER -->
+    <!-- ========================================================= -->
+
+    <div class="header">
+
+        <div class="header-title">
+
+            <h1>
+                RHEL 9 Virtual Machines
+            </h1>
+
+            <p>
+                Manage and provision Red Hat Enterprise Linux 9
+                systems in the Linux Lab environment.
+            </p>
+
+        </div>
+
+
+        <a
+            href="{{ url_for('create_vm') }}"
+            class="create-button"
+        >
+            + Create RHEL 9 VM
+        </a>
+
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- VM TABLE -->
+    <!-- ========================================================= -->
+
+    <div class="card">
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>Name</th>
+                    <th>IP Address</th>
+                    <th>vCPUs</th>
+                    <th>Memory</th>
+                    <th>Installation</th>
+                    <th>Created</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+
+                {% for vm in vms %}
+
+
+                <!-- ================================================= -->
+                <!-- VM ROW -->
+                <!-- ================================================= -->
+
+                <tr
+                    class="vm-row"
+                    id="row-{{ vm.name }}"
+                >
+
+                    <td>
+
+                        <a
+                            href="{{ url_for('vm_detail', name=vm.name) }}"
+                            class="vm-name"
+                        >
+                            {{ vm.name }}
+                        </a>
+
+                    </td>
+
+
+                    <td>
+                        {{ vm.ip }}
+                    </td>
+
+
+                    <td>
+                        {{ vm.cpu }}
+                    </td>
+
+
+                    <td>
+                        {{ vm.ram }} MB
+                    </td>
+
+
+                    <td>
+
+                        <span class="installation">
+                            {{ vm.install_method | default("-") | upper }}
+                        </span>
+
+                    </td>
+
+
+                    <td>
+                        {{ vm.date }}
+                    </td>
+
+
+                    <td>
+
+
+                        {% if vm.status == "RUNNING" %}
+
+                            <span class="status running">
+                                RUNNING
+                            </span>
+
+
+                        {% elif vm.status == "STOPPED" %}
+
+                            <span class="status stopped">
+                                STOPPED
+                            </span>
+
+
+                        {% elif vm.status == "PROVISIONING" %}
+
+                            <span class="status provisioning">
+                                PROVISIONING
+                            </span>
+
+
+                        {% elif vm.status == "STARTING" %}
+
+                            <span class="status starting">
+                                STARTING
+                            </span>
+
+
+                        {% elif vm.status == "STOPPING" %}
+
+                            <span class="status stopping">
+                                STOPPING
+                            </span>
+
+
+                        {% elif vm.status == "RESTARTING" %}
+
+                            <span class="status restarting">
+                                RESTARTING
+                            </span>
+
+
+                        {% elif vm.status == "DELETING" %}
+
+                            <span class="status deleting">
+                                DELETING
+                            </span>
+
+
+                        {% elif vm.status == "ERROR" %}
+
+                            <span class="status error">
+                                ERROR
+                            </span>
+
+
+                        {% else %}
+
+                            <span class="status stopped">
+                                {{ vm.status }}
+                            </span>
+
+                        {% endif %}
+
+
+                    </td>
+
+
+                    <!-- ================================================= -->
+                    <!-- ACTIONS -->
+                    <!-- ================================================= -->
+
+                    <td>
+
+                        <div class="actions">
+
+
+                            {% if vm.status not in ["PROVISIONING", "DELETING", "DELETED"] %}
+
+
+                                <div class="job-menu">
+
+
+                                    <button
+                                        type="button"
+                                        class="job-button"
+                                        onclick="toggleJobMenu(this)"
+                                    >
+                                        Run Job ▼
+                                    </button>
+
+
+                                    <div class="job-dropdown">
+
+
+                                        <!-- ================================= -->
+                                        <!-- LIFECYCLE -->
+                                        <!-- ================================= -->
+
+                                        <div class="lifecycle-actions">
+
+
+                                            <!-- START -->
+
+                                            <form
+                                                method="POST"
+                                                action="{{ url_for('lifecycle_action', name=vm.name, action='start') }}"
+                                            >
+
+                                                <button
+                                                    type="submit"
+                                                    class="lifecycle-button"
+                                                    {% if vm.status != "STOPPED" %}
+                                                        disabled
+                                                    {% endif %}
+                                                    title="Start VM"
+                                                >
+
+                                                    <span class="action-symbol start-symbol">
+                                                        ▶
+                                                    </span>
+
+                                                    Start
+
+                                                </button>
+
+                                            </form>
+
+
+                                            <!-- STOP -->
+
+                                            <form
+                                                method="POST"
+                                                action="{{ url_for('lifecycle_action', name=vm.name, action='stop') }}"
+                                            >
+
+                                                <button
+                                                    type="submit"
+                                                    class="lifecycle-button"
+                                                    {% if vm.status != "RUNNING" %}
+                                                        disabled
+                                                    {% endif %}
+                                                    title="Stop VM"
+                                                >
+
+                                                    <span class="action-symbol stop-symbol">
+                                                        ■
+                                                    </span>
+
+                                                    Stop
+
+                                                </button>
+
+                                            </form>
+
+
+                                            <!-- RESTART -->
+
+                                            <form
+                                                method="POST"
+                                                action="{{ url_for('lifecycle_action', name=vm.name, action='restart') }}"
+                                            >
+
+                                                <button
+                                                    type="submit"
+                                                    class="lifecycle-button"
+                                                    {% if vm.status != "RUNNING" %}
+                                                        disabled
+                                                    {% endif %}
+                                                    title="Restart VM"
+                                                >
+
+                                                    <span class="action-symbol restart-symbol">
+                                                        ↻
+                                                    </span>
+
+                                                    Restart
+
+                                                </button>
+
+                                            </form>
+
+
+                                        </div>
+
+
+                                        <div class="job-separator"></div>
+
+
+                                        <!-- ================================= -->
+                                        <!-- BASELINE -->
+                                        <!-- ================================= -->
+
+                                        <form
+                                            method="POST"
+                                            action="{{ url_for('execute_vm_job', name=vm.name, job_name='baseline') }}"
+                                        >
+
+                                            <button
+                                                type="submit"
+                                                class="job-item"
+                                                {% if vm.status != "RUNNING" %}
+                                                    disabled
+                                                {% endif %}
+                                            >
+
+                                                <span class="job-icon">
+                                                    ⚙
+                                                </span>
+
+                                                Apply Linux baseline
+
+                                            </button>
+
+                                        </form>
+
+
+                                        <!-- ================================= -->
+                                        <!-- EPEL -->
+                                        <!-- ================================= -->
+
+                                        <form
+                                            method="POST"
+                                            action="{{ url_for('execute_vm_job', name=vm.name, job_name='epel') }}"
+                                        >
+
+                                            <button
+                                                type="submit"
+                                                class="job-item"
+                                                {% if vm.status != "RUNNING" %}
+                                                    disabled
+                                                {% endif %}
+                                            >
+
+                                                <span class="job-icon">
+                                                    ◈
+                                                </span>
+
+                                                Enable EPEL
+
+                                            </button>
+
+                                        </form>
+
+
+                                    </div>
+
+                                </div>
+
+
+                            {% endif %}
+
+
+                            <!-- ================================================= -->
+                            <!-- DETAILS -->
+                            <!-- ================================================= -->
+
+                            {% if vm.status != "DELETED" %}
+
+                                <button
+                                    type="button"
+                                    class="details-button"
+                                    onclick="toggleDetails('{{ vm.name }}')"
+                                >
+                                    Details
+                                </button>
+
+                            {% endif %}
+
+
+                            <!-- ================================================= -->
+                            <!-- LOGS -->
+                            <!-- ================================================= -->
+
+                            {% if vm.log %}
+
+                                <a
+                                    href="{{ url_for('logs', name=vm.name) }}"
+                                >
+                                    Logs
+                                </a>
+
+                            {% endif %}
+
+
+                            <!-- ================================================= -->
+                            <!-- DELETE -->
+                            <!-- ================================================= -->
+
+                            {% if vm.status not in ["DELETING", "DELETED"] %}
+
+                                <a
+                                    href="{{ url_for('delete_vm', name=vm.name) }}"
+                                    class="delete"
+                                >
+                                    Delete
+                                </a>
+
+                            {% endif %}
+
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+
+                <!-- ================================================= -->
+                <!-- DETAILS -->
+                <!-- ================================================= -->
+
+                <tr
+                    id="details-{{ vm.name }}"
+                    class="details-row"
+                >
+
+                    <td colspan="8">
+
+
+                        <div class="details-container">
+
+
+                            <div class="details-grid">
+
+
+                                <!-- ========================================= -->
+                                <!-- VM STATUS -->
+                                <!-- ========================================= -->
+
+                                <div class="details-section">
+
+                                    <h3>
+
+                                        <span class="section-icon status-icon">
+                                            ●
+                                        </span>
+
+                                        VM Status
+
+                                    </h3>
+
+
+                                    <div class="detail-line">
+
+                                        <span class="detail-label">
+                                            Portal status
+                                        </span>
+
+                                        <span class="detail-value">
+
+                                            {% if vm.status == "RUNNING" %}
+
+                                                <span class="status running">
+                                                    RUNNING
+                                                </span>
+
+                                            {% elif vm.status == "STOPPED" %}
+
+                                                <span class="status stopped">
+                                                    STOPPED
+                                                </span>
+
+                                            {% else %}
+
+                                                {{ vm.status }}
+
+                                            {% endif %}
+
+                                        </span>
+
+                                    </div>
+
+
+                                    <div class="detail-line">
+
+                                        <span class="detail-label">
+                                            Libvirt state
+                                        </span>
+
+                                        <span class="detail-value">
+                                            {{ vm.libvirt_state | default("-") }}
+                                        </span>
+
+                                    </div>
+
+
+                                    <div class="detail-line">
+
+                                        <span class="detail-label">
+                                            Persistent
+                                        </span>
+
+                                        <span class="detail-value">
+                                            {{ vm.persistent | default("-") }}
+                                        </span>
+
+                                    </div>
+
+
+                                    <div class="detail-line">
+
+                                        <span class="detail-label">
+                                            Installation
+                                        </span>
+
+                                        <span class="detail-value">
+                                            {{ vm.install_method | default("-") | upper }}
+                                        </span>
+
+                                    </div>
+
+
+                                    <div class="detail-line">
+
+                                        <span class="detail-label">
+                                            Created
+                                        </span>
+
+                                        <span class="detail-value">
+                                            {{ vm.date | default("-") }}
+                                        </span>
+
+                                    </div>
+
+                                </div>
+
+
+                                <!-- ========================================= -->
+                                <!-- SYSTEM INFORMATION -->
+                                <!-- ========================================= -->
+
+                                <div class="details-section">
+
+                                    <h3>
+
+                                        <span class="section-icon system-icon">
+                                            ⊙
+                                        </span>
+
+                                        System Information
+
+                                    </h3>
+
+
+                                    <div class="detail-line">
+
+                                        <span class="detail-label">
+                                            Hostname
+                                        </span>
+
+                                        <span class="detail-value">
+                                            {{ vm.name }}
+                                        </span>
+
+                                    </div>
+
+
+                                    <div class="detail-line">
+
+                                        <span class="detail-label">
+                                            IP Address
+                                        </span>
+
+                                        <span class="detail-value">
+                                            {{ vm.ip }}
+                                        </span>
+
+                                    </div>
+
+
+                                    <div class="detail-line">
+
+                                        <span class="detail-label">
+                                            UUID
+                                        </span>
+
+                                        <span class="detail-value">
+                                            {{ vm.uuid | default("-") }}
+                                        </span>
+
+                                    </div>
+
+
+                                    <div class="detail-line">
+
+                                        <span class="detail-label">
+                                            vCPUs
+                                        </span>
+
+                                        <span class="detail-value">
+                                            {{ vm.cpu }}
+                                        </span>
+
+                                    </div>
+
+
+                                    <div class="detail-line">
+
+                                        <span class="detail-label">
+                                            Memory
+                                        </span>
+
+                                        <span class="detail-value">
+                                            {{ vm.ram }} MB
+                                        </span>
+
+                                    </div>
+
+                                </div>
+
+
+                                <!-- ========================================= -->
+                                <!-- RESOURCES -->
+                                <!-- ========================================= -->
+
+                                <div class="details-section">
+
+                                    <h3>
+
+                                        <span class="section-icon resource-icon">
+                                            ◈
+                                        </span>
+
+                                        Resources
+
+                                    </h3>
+
+
+                                    <div class="detail-line">
+
+                                        <span class="detail-label">
+                                            Libvirt CPU
+                                        </span>
+
+                                        <span class="detail-value">
+                                            {{ vm.libvirt_cpu | default("-") }}
+                                        </span>
+
+                                    </div>
+
+
+                                    <div class="detail-line">
+
+                                        <span class="detail-label">
+                                            Libvirt memory
+                                        </span>
+
+                                        <span class="detail-value">
+                                            {{ vm.libvirt_memory | default("-") }}
+                                        </span>
+
+                                    </div>
+
+
+                                    <div class="detail-line">
+
+                                        <span class="detail-label">
+                                            Disks
+                                        </span>
+
+                                        <span class="detail-value">
+                                            {{ vm.disks | length }}
+                                        </span>
+
+                                    </div>
+
+
+                                    <div class="detail-line">
+
+                                        <span class="detail-label">
+                                            Network interfaces
+                                        </span>
+
+                                        <span class="detail-value">
+                                            {{ vm.interfaces | length }}
+                                        </span>
+
+                                    </div>
+
+                                </div>
+
+
+                            </div>
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+
+                {% else %}
+
+
+                <tr>
+
+                    <td
+                        colspan="8"
+                        class="empty"
+                    >
+                        No virtual machines have been provisioned yet.
+                    </td>
+
+                </tr>
+
+
+                {% endfor %}
+
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+
+    <div class="footer">
+        Linux Lab Provisioner · RHEL 9
+    </div>
+
+
+</div>
+
+
+<!-- ============================================================= -->
+<!-- JAVASCRIPT -->
+<!-- ============================================================= -->
+
+<script>
+
+
+function toggleDetails(vmName) {
+
+    const row = document.getElementById(
+        "details-" + vmName
+    );
+
+    if (!row) {
+        return;
+    }
+
+    row.classList.toggle(
+        "visible"
+    );
+}
+
+
+function toggleJobMenu(button) {
+
+    const menu =
+        button.parentElement.querySelector(
+            ".job-dropdown"
+        );
+
+    if (!menu) {
+        return;
+    }
+
+    const isOpen =
+        menu.classList.contains("open");
+
+    // Close all other menus.
+
+    document
+        .querySelectorAll(".job-dropdown.open")
+        .forEach(function(otherMenu) {
+
+            otherMenu.classList.remove("open");
+
+        });
+
+
+    if (!isOpen) {
+
+        menu.classList.add("open");
+
+    }
+
+}
+
+
+// Close dropdown when clicking outside.
+
+document.addEventListener(
+    "click",
+    function(event) {
+
+        if (
+            !event.target.closest(".job-menu")
+        ) {
+
+            document
+                .querySelectorAll(".job-dropdown.open")
+                .forEach(function(menu) {
+
+                    menu.classList.remove("open");
+
+                });
+
+        }
+
+    }
+);
+
+
+</script>
+
+
+</body>
+
+</html>

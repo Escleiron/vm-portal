@@ -1,0 +1,19 @@
+---
+# tasks file for linux_lab_provisioning
+
+- name: Provision Gold
+  ansible.builtin.include_tasks: gold.yml
+  when:
+    - operation != "delete"
+    - install_method == "gold"
+
+- name: Provision Kickstart
+  ansible.builtin.include_tasks: kickstart.yml
+  when:
+    - operation != "delete"
+    - install_method == "kickstart"
+
+- name: Delete VM
+  ansible.builtin.include_tasks: delete.yml
+  when:
+    - operation == "delete"

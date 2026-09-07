@@ -1,0 +1,28 @@
+---
+# Basic system packages
+
+- name: Install basic system packages
+  ansible.builtin.dnf:
+    name:
+      - bash-completion
+      - bind-utils
+      - bzip2
+      - curl
+      - git
+      - gzip
+      - iproute
+      - lsof
+      - net-tools
+      - nfs-utils
+      - procps-ng
+      - psmisc
+      - rsync
+      - samba-client
+      - sysstat
+      - tar
+      - traceroute
+      - unzip
+      - vim-enhanced
+      - wget
+      - xz
+    state: present

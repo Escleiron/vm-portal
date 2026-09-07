@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environments
+venv/
+.venv/
+
+# Runtime inventory - generated from vms.yml
+ansible/inventories/inventory.yml
+
+# Runtime state
+vms.yml
+*.tmp
+
+# Logs
+*.log
+
+# Local backups
+*-BCK
+*-before-inventory
+*.bak
+*.backup
+*.old
+*.orig
+*~
+
+# Secrets / local configuration
+.env
+*.env

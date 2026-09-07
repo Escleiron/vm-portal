@@ -1,0 +1,35 @@
+---
+- name: Manage virtual machine lifecycle
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  environment:
+    LIBVIRT_DEFAULT_URI: qemu:///system
+
+  vars:
+    allowed_vm_actions:
+      - start
+      - stop
+      - restart
+
+  pre_tasks:
+
+    - name: Validate vm_name
+      ansible.builtin.assert:
+        that:
+          - vm_name is defined
+          - vm_name | length > 0
+        fail_msg: "vm_name must be provided"
+
+    - name: Validate vm_action
+      ansible.builtin.assert:
+        that:
+          - vm_action is defined
+          - vm_action in allowed_vm_actions
+        fail_msg: >
+          vm_action must be one of:
+          {{ allowed_vm_actions | join(', ') }}
+
+  roles:
+    - /opt/vm-portal/ansible/roles/vm_lifecycle

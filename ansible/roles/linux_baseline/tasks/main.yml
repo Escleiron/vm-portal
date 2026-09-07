@@ -1,0 +1,17 @@
+---
+# tasks file for linux_baseline
+
+- name: Red Hat subscription
+  ansible.builtin.include_tasks: subscription.yml
+
+- name: Basic packages
+  ansible.builtin.include_tasks: packages.yml
+
+- name: Security configuration
+  ansible.builtin.include_tasks: security.yml
+
+- name: EPEL configuration
+  ansible.builtin.import_tasks: epel.yml
+  tags:
+    - never
+    - epel

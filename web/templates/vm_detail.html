@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>RHEL 9 - {{ vm.name }}</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f6f8;
+            margin: 0;
+            padding: 30px;
+            color: #222;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: auto;
+        }
+
+        /* ===================================================== */
+        /* HEADER */
+        /* ===================================================== */
+
+        .header {
+            background: white;
+            padding: 25px 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            margin: 0 0 8px 0;
+            font-size: 28px;
+            color: #151515;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* ===================================================== */
+        /* STATUS */
+        /* ===================================================== */
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            margin-top: 15px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .status::before {
+            content: "";
+            width: 7px;
+            height: 7px;
+            margin-right: 7px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .running {
+            background-color: #dff3e5;
+            color: #137333;
+        }
+
+        .stopped {
+            background-color: #eeeeee;
+            color: #555;
+        }
+
+        .provisioning,
+        .starting,
+        .stopping,
+        .restarting,
+        .deleting {
+            background-color: #fff4e5;
+            color: #b06000;
+        }
+
+        .error {
+            background-color: #fde8e8;
+            color: #b00020;
+        }
+
+        .deleted {
+            background-color: #eeeeee;
+            color: #777;
+        }
+
+        /* ===================================================== */
+        /* SECTIONS */
+        /* ===================================================== */
+
+        .section {
+            background: white;
+            padding: 25px 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+
+        .section h2 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 19px;
+            color: #151515;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+
+        /* ===================================================== */
+        /* INFORMATION */
+        /* ===================================================== */
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px 40px;
+        }
+
+        .info-item {
+            padding: 9px 0;
+        }
+
+        .label {
+            display: block;
+            font-size: 12px;
+            color: #777;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .value {
+            font-size: 16px;
+            font-weight: 500;
+            overflow-wrap: anywhere;
+            color: #222;
+        }
+
+        /* ===================================================== */
+        /* SPECIAL VALUES */
+        /* ===================================================== */
+
+        .value-ip {
+            color: #0d6efd;
+            font-weight: 600;
+        }
+
+        .value-uuid {
+            color: #666;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        .value-yes {
+            color: #137333;
+            font-weight: 700;
+        }
+
+        .value-no {
+            color: #777;
+            font-weight: 600;
+        }
+
+        /* ===================================================== */
+        /* INSTALLATION BADGES */
+        /* ===================================================== */
+
+        .install-badge {
+            display: inline-block;
+            padding: 4px 9px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            letter-spacing: 0.3px;
+        }
+
+        .install-gold {
+            background-color: #fff4d6;
+            color: #946200;
+        }
+
+        .install-kickstart {
+            background-color: #e8f0fe;
+            color: #174ea6;
+        }
+
+        .install-default {
+            background-color: #eeeeee;
+            color: #555;
+        }
+
+        /* ===================================================== */
+        /* TABLE */
+        /* ===================================================== */
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+        }
+
+        th {
+            color: #666;
+            font-size: 13px;
+            background-color: #f8f8f8;
+        }
+
+        td {
+            font-size: 14px;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        tbody tr:hover {
+            background-color: #fafafa;
+        }
+
+        .device {
+            font-family: monospace;
+            font-weight: 600;
+            color: #444;
+        }
+
+        .source {
+            font-family: monospace;
+            font-size: 13px;
+            color: #666;
+            overflow-wrap: anywhere;
+        }
+
+        /* ===================================================== */
+        /* ACTIONS */
+        /* ===================================================== */
+
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 11px 20px;
+            min-width: 105px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .button:hover {
+            opacity: 0.88;
+        }
+
+        .logs {
+            background-color: #444;
+            color: white;
+        }
+
+        .back {
+            background-color: #eeeeee;
+            color: #333;
+        }
+
+        /* ===================================================== */
+        /* FOOTER */
+        /* ===================================================== */
+
+        .footer {
+            text-align: center;
+            margin-top: 25px;
+        }
+
+        .footer a {
+            color: #555;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* ===================================================== */
+        /* RESPONSIVE */
+        /* ===================================================== */
+
+        @media (max-width: 700px) {
+
+            body {
+                padding: 15px;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .actions {
+                align-items: stretch;
+            }
+
+            .button {
+                min-width: 100px;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+
+    <!-- ===================================================== -->
+    <!-- HEADER -->
+    <!-- ===================================================== -->
+
+    <div class="header">
+
+        <h1>
+            RHEL 9 - {{ vm.name }}
+        </h1>
+
+        <div class="subtitle">
+            Virtual Machine Details
+        </div>
+
+
+        {% set current_libvirt_state = vm.libvirt_state | default("") | lower | trim %}
+
+        {% if current_libvirt_state == "running" %}
+
+            <span class="status running">
+                RUNNING
+            </span>
+
+        {% elif current_libvirt_state == "shut off" %}
+
+            <span class="status stopped">
+                STOPPED
+            </span>
+
+        {% elif vm.status == "PROVISIONING" %}
+
+            <span class="status provisioning">
+                PROVISIONING
+            </span>
+
+        {% elif vm.status == "STARTING" %}
+
+            <span class="status starting">
+                STARTING
+            </span>
+
+        {% elif vm.status == "STOPPING" %}
+
+            <span class="status stopping">
+                STOPPING
+            </span>
+
+        {% elif vm.status == "RESTARTING" %}
+
+            <span class="status restarting">
+                RESTARTING
+            </span>
+
+        {% elif vm.status == "DELETING" %}
+
+            <span class="status deleting">
+                DELETING
+            </span>
+
+        {% elif vm.status == "DELETED" %}
+
+            <span class="status deleted">
+                DELETED
+            </span>
+
+        {% elif vm.status == "ERROR" %}
+
+            <span class="status error">
+                ERROR
+            </span>
+
+        {% else %}
+
+            <span class="status stopped">
+                {{ vm.status }}
+            </span>
+
+        {% endif %}
+
+    </div>
+
+
+    <!-- ===================================================== -->
+    <!-- GENERAL -->
+    <!-- ===================================================== -->
+
+    <div class="section">
+
+        <h2>
+            General
+        </h2>
+
+        <div class="info-grid">
+
+
+            <div class="info-item">
+
+                <span class="label">
+                    Hostname
+                </span>
+
+                <span class="value">
+                    {{ vm.name }}
+                </span>
+
+            </div>
+
+
+            <div class="info-item">
+
+                <span class="label">
+                    IP Address
+                </span>
+
+                <span class="value value-ip">
+                    {{ vm.ip | default("-") }}
+                </span>
+
+            </div>
+
+
+            <div class="info-item">
+
+                <span class="label">
+                    Installation
+                </span>
+
+                <span class="value">
+
+                    {% set install_method = vm.install_method | default("") | upper %}
+
+                    {% if install_method == "GOLD" %}
+
+                        <span class="install-badge install-gold">
+                            GOLD
+                        </span>
+
+                    {% elif install_method == "KICKSTART" %}
+
+                        <span class="install-badge install-kickstart">
+                            KICKSTART
+                        </span>
+
+                    {% else %}
+
+                        <span class="install-badge install-default">
+                            {{ install_method | default("-") }}
+                        </span>
+
+                    {% endif %}
+
+                </span>
+
+            </div>
+
+
+            <div class="info-item">
+
+                <span class="label">
+                    Creation Date
+                </span>
+
+                <span class="value">
+                    {{ vm.date | default("-") }}
+                </span>
+
+            </div>
+
+
+            <div class="info-item">
+
+                <span class="label">
+                    UUID
+                </span>
+
+                <span class="value value-uuid">
+                    {{ vm.uuid | default("-") }}
+                </span>
+
+            </div>
+
+
+            <div class="info-item">
+
+                <span class="label">
+                    Libvirt State
+                </span>
+
+                <span class="value">
+
+                    {% if current_libvirt_state == "running" %}
+
+                        <span class="status running">
+                            RUNNING
+                        </span>
+
+                    {% elif current_libvirt_state == "shut off" %}
+
+                        <span class="status stopped">
+                            STOPPED
+                        </span>
+
+                    {% else %}
+
+                        {{ vm.libvirt_state | default("-") }}
+
+                    {% endif %}
+
+                </span>
+
+            </div>
+
+
+            <div class="info-item">
+
+                <span class="label">
+                    Persistent
+                </span>
+
+                <span class="value">
+
+                    {% if vm.persistent == "yes" or vm.persistent == true %}
+
+                        <span class="value-yes">
+                            ✓ YES
+                        </span>
+
+                    {% elif vm.persistent == "no" or vm.persistent == false %}
+
+                        <span class="value-no">
+                            NO
+                        </span>
+
+                    {% else %}
+
+                        {{ vm.persistent | default("-") }}
+
+                    {% endif %}
+
+                </span>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================================== -->
+    <!-- COMPUTE -->
+    <!-- ===================================================== -->
+
+    <div class="section">
+
+        <h2>
+            Compute
+        </h2>
+
+        <div class="info-grid">
+
+
+            <div class="info-item">
+
+                <span class="label">
+                    vCPU
+                </span>
+
+                <span class="value">
+                    {{ vm.cpu | default("-") }}
+                </span>
+
+            </div>
+
+
+            <div class="info-item">
+
+                <span class="label">
+                    Memory
+                </span>
+
+                <span class="value">
+                    {{ vm.ram | default("-") }} MB
+                </span>
+
+            </div>
+
+
+            <div class="info-item">
+
+                <span class="label">
+                    Libvirt CPU
+                </span>
+
+                <span class="value">
+                    {{ vm.libvirt_cpu | default("-") }}
+                </span>
+
+            </div>
+
+
+            <div class="info-item">
+
+                <span class="label">
+                    Libvirt Memory
+                </span>
+
+                <span class="value">
+                    {{ vm.libvirt_memory | default("-") }}
+                </span>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================================== -->
+    <!-- STORAGE -->
+    <!-- ===================================================== -->
+
+    <div class="section">
+
+        <h2>
+            Storage
+        </h2>
+
+
+        {% if disks %}
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>Device</th>
+                    <th>Source</th>
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+            {% for disk in disks %}
+
+                <tr>
+
+                    <td class="device">
+                        {{ disk.target | default("-") }}
+                    </td>
+
+                    <td class="source">
+                        {{ disk.source | default("-") }}
+                    </td>
+
+                </tr>
+
+            {% endfor %}
+
+            </tbody>
+
+        </table>
+
+
+        {% else %}
+
+            <p>
+                No storage information available.
+            </p>
+
+        {% endif %}
+
+    </div>
+
+
+    <!-- ===================================================== -->
+    <!-- NETWORK -->
+    <!-- ===================================================== -->
+
+    <div class="section">
+
+        <h2>
+            Network
+        </h2>
+
+
+        {% if interfaces %}
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>Interface</th>
+                    <th>Type</th>
+                    <th>Source</th>
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+            {% for interface in interfaces %}
+
+                <tr>
+
+                    <td>
+                        {{ interface.interface | default("-") }}
+                    </td>
+
+                    <td>
+                        {{ interface.type | default("-") }}
+                    </td>
+
+                    <td>
+                        {{ interface.source | default("-") }}
+                    </td>
+
+                </tr>
+
+            {% endfor %}
+
+            </tbody>
+
+        </table>
+
+
+        {% else %}
+
+            <p>
+                No network information available.
+            </p>
+
+        {% endif %}
+
+    </div>
+
+
+    <!-- ===================================================== -->
+    <!-- NAVIGATION -->
+    <!-- ===================================================== -->
+
+    <div class="section">
+
+        <div class="actions">
+
+            <a
+                href="{{ url_for('logs', name=vm.name) }}"
+                class="button logs"
+            >
+                LOGS
+            </a>
+
+
+            <a
+                href="{{ url_for('index') }}"
+                class="button back"
+            >
+                ← BACK
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================================== -->
+    <!-- FOOTER -->
+    <!-- ===================================================== -->
+
+    <div class="footer">
+
+        <a href="{{ url_for('index') }}">
+            Linux Lab Provisioner
+        </a>
+
+    </div>
+
+
+</div>
+
+</body>
+
+</html>

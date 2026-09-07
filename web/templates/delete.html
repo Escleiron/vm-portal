@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>
+        Delete RHEL 9 VM
+    </title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 40px 20px;
+
+            background: #f5f6f8;
+            color: #1f2937;
+
+            font-family:
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                Arial,
+                sans-serif;
+        }
+
+        .container {
+            max-width: 650px;
+            margin: 0 auto;
+        }
+
+        .header {
+            margin-bottom: 25px;
+        }
+
+        .header h1 {
+            margin: 0;
+
+            font-size: 28px;
+            font-weight: 650;
+        }
+
+        .header p {
+            margin-top: 7px;
+
+            color: #667085;
+            font-size: 14px;
+        }
+
+        .card {
+            background: white;
+
+            border: 1px solid #d9dde3;
+            border-radius: 10px;
+
+            padding: 30px;
+
+            box-shadow:
+                0 2px 6px rgba(0, 0, 0, 0.04);
+        }
+
+        .warning {
+            margin-bottom: 25px;
+
+            padding: 15px;
+
+            border: 1px solid #f1b8b8;
+            border-radius: 7px;
+
+            background: #fef3f2;
+            color: #b42318;
+
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .details {
+            margin-bottom: 25px;
+        }
+
+        .detail {
+            display: flex;
+
+            padding: 11px 0;
+
+            border-bottom: 1px solid #eaecf0;
+        }
+
+        .detail:last-child {
+            border-bottom: none;
+        }
+
+        .label {
+            width: 140px;
+
+            color: #667085;
+
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .value {
+            color: #1f2937;
+
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        label {
+            display: block;
+
+            margin-bottom: 7px;
+
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            height: 42px;
+
+            padding: 0 12px;
+
+            border: 1px solid #cfd4dc;
+            border-radius: 7px;
+
+            font-size: 14px;
+
+            outline: none;
+        }
+
+        input:focus {
+            border-color: #b42318;
+
+            box-shadow:
+                0 0 0 2px rgba(180, 35, 24, 0.10);
+        }
+
+        .error {
+            margin-bottom: 20px;
+
+            padding: 12px 15px;
+
+            border: 1px solid #f1b8b8;
+            border-radius: 7px;
+
+            background: #fff1f1;
+            color: #b42318;
+
+            font-size: 14px;
+        }
+
+        .hint {
+            margin-top: 7px;
+
+            color: #667085;
+
+            font-size: 12px;
+        }
+
+        .actions {
+            display: flex;
+
+            justify-content: flex-end;
+
+            gap: 10px;
+
+            margin-top: 30px;
+            padding-top: 22px;
+
+            border-top: 1px solid #e4e7ec;
+        }
+
+        .button {
+            display: inline-block;
+
+            padding: 10px 18px;
+
+            border-radius: 7px;
+
+            font-size: 14px;
+            font-weight: 600;
+
+            text-decoration: none;
+
+            cursor: pointer;
+        }
+
+        .cancel {
+            background: #f2f4f7;
+
+            color: #344054;
+
+            border: 1px solid #d0d5dd;
+        }
+
+        .cancel:hover {
+            background: #e4e7ec;
+        }
+
+        .delete {
+            background: #b42318;
+
+            color: white;
+
+            border: 1px solid #b42318;
+        }
+
+        .delete:hover {
+            background: #912018;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+
+    <!-- ========================================================= -->
+    <!-- HEADER -->
+    <!-- ========================================================= -->
+
+    <div class="header">
+
+        <h1>
+            Delete RHEL 9 Virtual Machine
+        </h1>
+
+        <p>
+            Confirm the deletion of this virtual machine.
+        </p>
+
+    </div>
+
+
+    <div class="card">
+
+
+        <!-- ===================================================== -->
+        <!-- WARNING -->
+        <!-- ===================================================== -->
+
+        <div class="warning">
+
+            <strong>Warning</strong><br>
+
+            This operation will permanently delete the virtual
+            machine and its associated storage.
+
+            This action cannot be undone.
+
+        </div>
+
+
+        <!-- ===================================================== -->
+        <!-- ERROR -->
+        <!-- ===================================================== -->
+
+        {% if error %}
+
+        <div class="error">
+
+            {{ error }}
+
+        </div>
+
+        {% endif %}
+
+
+        <!-- ===================================================== -->
+        <!-- VM DETAILS -->
+        <!-- ===================================================== -->
+
+        <div class="details">
+
+
+            <div class="detail">
+
+                <div class="label">
+                    Virtual Machine
+                </div>
+
+                <div class="value">
+                    {{ vm.name }}
+                </div>
+
+            </div>
+
+
+            <div class="detail">
+
+                <div class="label">
+                    IP Address
+                </div>
+
+                <div class="value">
+                    {{ vm.ip }}
+                </div>
+
+            </div>
+
+
+            <div class="detail">
+
+                <div class="label">
+                    vCPUs
+                </div>
+
+                <div class="value">
+                    {{ vm.cpu }}
+                </div>
+
+            </div>
+
+
+            <div class="detail">
+
+                <div class="label">
+                    Memory
+                </div>
+
+                <div class="value">
+                    {{ vm.ram }} MB
+                </div>
+
+            </div>
+
+
+            <div class="detail">
+
+                <div class="label">
+                    Installation
+                </div>
+
+                <div class="value">
+                    {{ vm.install_method | default("-") | upper }}
+                </div>
+
+            </div>
+
+
+        </div>
+
+
+        <!-- ===================================================== -->
+        <!-- DELETE FORM -->
+        <!-- ===================================================== -->
+
+        <form method="post">
+
+
+            <label for="delete_key">
+                Deletion key
+            </label>
+
+
+            <input
+                type="password"
+                id="delete_key"
+                name="delete_key"
+                autocomplete="off"
+                required
+            >
+
+
+            <div class="hint">
+
+                Enter the deletion key to confirm this operation.
+
+            </div>
+
+
+            <div class="actions">
+
+
+                <a
+                    href="/"
+                    class="button cancel"
+                >
+                    Cancel
+                </a>
+
+
+                <button
+                    type="submit"
+                    class="button delete"
+                >
+                    Delete RHEL 9 VM
+                </button>
+
+
+            </div>
+
+
+        </form>
+
+
+    </div>
+
+
+    <div
+        style="
+            margin-top:15px;
+            color:#98a2b3;
+            font-size:12px;
+            text-align:right;
+        "
+    >
+
+        Linux Lab Provisioner · RHEL 9
+
+    </div>
+
+
+</div>
+
+</body>
+
+</html>
