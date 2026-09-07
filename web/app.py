@@ -35,7 +35,7 @@ LIFECYCLE_PLAYBOOK = (
 )
 
 BASELINE_PLAYBOOK = (
-    BASE_DIR / "ansible/playbooks/test_baseline.yml"
+    BASE_DIR / "ansible/playbooks/apply_linux_baseline.yml"
 )
 
 INVENTORY_FILE = (
