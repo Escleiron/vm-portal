@@ -10,6 +10,7 @@ CONFIG_DIR="/etc/vm-portal"
 STATE_DIR="/var/lib/vm-portal"
 LOG_DIR="/var/log/vm-portal"
 LIBVIRT_IMAGE_DIR="/home/libvirt-images"
+
 ENV_FILE="${CONFIG_DIR}/vm-portal.env"
 SERVICE_FILE="/etc/systemd/system/vm-portal.service"
 
@@ -36,10 +37,6 @@ error() {
     exit 1
 }
 
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
-}
-
 require_root() {
     [[ "${EUID}" -eq 0 ]] || error "Run this script as root."
 }
@@ -59,7 +56,7 @@ ask_yes_no() {
     local answer
 
     while true; do
-        if [[ "$default" == "y" ]]; then
+        if [[ "${default}" == "y" ]]; then
             read -r -p "${prompt} [Y/n]: " answer
             answer="${answer:-y}"
         else
@@ -113,6 +110,19 @@ echo "============================================================"
 ask_yes_no "Continue with installation?" "y" || exit 0
 
 # ------------------------------------------------------------
+# Operating system
+# ------------------------------------------------------------
+
+info "Checking operating system"
+
+if [[ -f /etc/redhat-release ]]; then
+    echo "Detected: $(cat /etc/redhat-release)"
+else
+    warn "This does not appear to be a Red Hat based system."
+    ask_yes_no "Continue anyway?" "n" || exit 1
+fi
+
+# ------------------------------------------------------------
 # Packages
 # ------------------------------------------------------------
 
@@ -129,6 +139,7 @@ PACKAGES=(
     xorriso
     python3
     python3-pip
+    python3-devel
     openssl
     git
     openssh-clients
@@ -150,13 +161,32 @@ else
 fi
 
 # ------------------------------------------------------------
+# Ansible Galaxy dependencies
+# ------------------------------------------------------------
+
+info "Checking Ansible Galaxy requirements"
+
+ANSIBLE_REQUIREMENTS="${APP_DIR}/requirements.yml"
+
+if [[ -f "${ANSIBLE_REQUIREMENTS}" ]]; then
+    ansible-galaxy collection install \
+        -r "${ANSIBLE_REQUIREMENTS}"
+else
+    echo "No Ansible Galaxy requirements.yml found."
+fi
+
+# ------------------------------------------------------------
 # Libvirt
 # ------------------------------------------------------------
 
 info "Checking libvirt"
 
-if ! systemctl is-active --quiet libvirtd 2>/dev/null; then
-    systemctl enable --now libvirtd
+if systemctl list-unit-files libvirtd.service >/dev/null 2>&1; then
+    if ! systemctl is-active --quiet libvirtd; then
+        systemctl enable --now libvirtd
+    fi
+else
+    warn "libvirtd.service was not found."
 fi
 
 if ! virsh -c qemu:///system uri >/dev/null 2>&1; then
@@ -171,11 +201,12 @@ echo "Libvirt connection OK: qemu:///system"
 
 info "Configuring ${ADMIN_USER}"
 
-for group in libvirt; do
-    if getent group "${group}" >/dev/null 2>&1; then
-        usermod -aG "${group}" "${ADMIN_USER}"
-    fi
-done
+if getent group libvirt >/dev/null 2>&1; then
+    usermod -aG libvirt "${ADMIN_USER}"
+    echo "Added ${ADMIN_USER} to group libvirt."
+else
+    warn "Group libvirt does not exist."
+fi
 
 # ------------------------------------------------------------
 # SSH key
@@ -234,7 +265,6 @@ install -d -m 0755 "${LIBVIRT_IMAGE_DIR}/vms"
 install -d -m 0755 "${LIBVIRT_IMAGE_DIR}/work"
 install -d -m 0755 "${LIBVIRT_IMAGE_DIR}/trash"
 
-# Keep runtime directories writable by the admin user.
 chown "${ADMIN_USER}:${ADMIN_USER}" \
     "${LIBVIRT_IMAGE_DIR}/vms" \
     "${LIBVIRT_IMAGE_DIR}/work" \
@@ -280,7 +310,6 @@ EOF
     echo "Created ${ENV_FILE}"
 fi
 
-# Ensure the configured port exists in the environment file.
 if ! grep -q '^VM_PORT=' "${ENV_FILE}"; then
     echo "VM_PORT=${PORTAL_PORT}" >> "${ENV_FILE}"
 fi
@@ -304,19 +333,10 @@ fi
 sudo -u "${ADMIN_USER}" "${VENV_DIR}/bin/pip" install --upgrade pip
 sudo -u "${ADMIN_USER}" "${VENV_DIR}/bin/pip" install -r "${APP_DIR}/requirements.txt"
 
-# ------------------------------------------------------------
-# Fix ownership of application
-# ------------------------------------------------------------
-
-info "Checking application ownership"
-
-# Do not recursively change ownership of the complete application if
-# the repository is intentionally managed by another user. Only ensure
-# the venv is owned by the selected admin user.
 chown -R "${ADMIN_USER}:${ADMIN_USER}" "${VENV_DIR}"
 
 # ------------------------------------------------------------
-# Verify provisioning prerequisites
+# Provisioning resources
 # ------------------------------------------------------------
 
 info "Checking VM Portal provisioning resources"
@@ -409,6 +429,10 @@ if ss -lnt 2>/dev/null | grep -q ":${PORTAL_PORT} "; then
     echo "Portal listening on TCP port ${PORTAL_PORT}: OK"
 else
     warn "Portal is not currently listening on TCP port ${PORTAL_PORT}."
+fi
+
+if command -v ansible-galaxy >/dev/null 2>&1; then
+    echo "Ansible Galaxy: OK"
 fi
 
 if [[ -x "${INVENTORY_GENERATOR}" ]]; then
